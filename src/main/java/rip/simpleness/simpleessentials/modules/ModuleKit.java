@@ -110,7 +110,7 @@ public class ModuleKit implements TerminableModule {
         createKit(player, name, 0L);
     }
 
-    public void deleteWarp(String warpName) {
+    public void deleteKit(String warpName) {
         kitData.remove(warpName);
     }
 
