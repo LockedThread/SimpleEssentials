@@ -1,0 +1,8 @@
+name: SimpleEssentials
+version: '1.0'
+main: rip.simpleness.simpleessentials.SimpleEssentials
+description: Simpleness's Essentials alternative
+load: STARTUP
+author: Simpleness
+website: www.simpleness.rip
+depend: [Vault, helper]
