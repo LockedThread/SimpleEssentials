@@ -10,6 +10,7 @@ import me.lucko.helper.terminable.TerminableConsumer;
 import me.lucko.helper.terminable.module.TerminableModule;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import rip.simpleness.simpleessentials.ParseRegistrar;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 import rip.simpleness.simpleessentials.map.SimplenessMap;
 import rip.simpleness.simpleessentials.objs.Warp;
@@ -33,7 +34,7 @@ public class ModuleWarp implements TerminableModule {
         this.warpData = warpDataGsonStorage.load().orElse(new SimplenessMap<>());
         terminableConsumer.bind(() -> warpDataGsonStorage.save(warpData));
 
-        Commands.parserRegistry().register(Warp.class, s -> Optional.of(getWarp(s)));
+        Commands.parserRegistry().register(Warp.class, ParseRegistrar.buildParser("warp", s -> isWarp(s) ? Optional.of(getWarp(s)) : Optional.empty()));
 
         Commands.create()
                 .assertPlayer()
