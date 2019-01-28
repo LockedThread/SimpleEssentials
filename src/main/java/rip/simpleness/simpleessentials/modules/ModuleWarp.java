@@ -41,13 +41,7 @@ public class ModuleWarp implements TerminableModule {
                 .assertPermission("simpleness.warps")
                 .handler(commandContext -> {
                     final String warps = getWarps(commandContext.sender());
-                    if (warpData.isEmpty()) {
-                        commandContext.reply(INSTANCE.getServerPrefix() + "&cThere's no warps set! /setwarp [name]");
-                    } else if (warps.isEmpty()) {
-                        commandContext.reply(INSTANCE.getServerPrefix() + "&cYou don't have permission to any of the current warps!");
-                    } else {
-                        commandContext.reply(INSTANCE.getServerPrefix() + "&eWarps: " + warps);
-                    }
+                    commandContext.reply(warpData.isEmpty() ? INSTANCE.getServerPrefix() + "&cThere's no warps set! /setwarp [name]" : warps.isEmpty() ? INSTANCE.getServerPrefix() + "&cYou don't have permission to any of the current warps!" : INSTANCE.getServerPrefix() + "&eWarps: " + warps);
                 }).registerAndBind(terminableConsumer, "warps");
 
         Commands.create()
