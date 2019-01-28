@@ -80,15 +80,20 @@ public class ModuleKit implements TerminableModule {
                 .handler(commandContext -> {
                     if (commandContext.args().size() == 0) {
                         final String kits = getKits(commandContext.sender());
-                        commandContext.reply(kits.isEmpty() ? INSTANCE.getServerPrefix() + "&eYou don't have access to any kits!" : INSTANCE.getServerPrefix() + "&eKits: " + kits);
+                        commandContext.reply(kits.isEmpty() ? INSTANCE.getServerPrefix() + "&cYou don't have access to any kits!" : INSTANCE.getServerPrefix() + "&eKits: " + kits);
                     } else if (commandContext.label().equalsIgnoreCase("kits")) {
                         commandContext.reply(INSTANCE.getServerPrefix() + "&e/kits");
                     } else if (commandContext.args().size() == 1) {
                         Kit kit = commandContext.arg(0).parseOrFail(Kit.class);
                         if (kit.hasPermission(commandContext.sender())) {
-                            giveKit(commandContext.sender(), kit);
+                            String error = giveKit(commandContext.sender(), kit);
+                            if (error.isEmpty()) {
+                                commandContext.reply(INSTANCE.getServerPrefix() + "&aYou have recieved the &e" + kit.getName() + " kit");
+                            } else {
+                                commandContext.reply(INSTANCE.getServerPrefix() + "&cYou have to wait " + error + " before you do this kit again!");
+                            }
                         } else {
-                            commandContext.reply(INSTANCE.getServerPrefix() + "&eYou don't have permission to use this kit!");
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&cYou don't have permission to use this kit!");
                         }
                     } else if (commandContext.args().size() == 2) {
                         Kit kit = commandContext.arg(0).parseOrFail(Kit.class);
@@ -161,7 +166,7 @@ public class ModuleKit implements TerminableModule {
             long time = account.getUsedKits().get(kit.getName());
             long subtracted = currentTime - time;
             if (subtracted < kit.getCooldown()) {
-                return TimeUtil.toLongForm(subtracted);
+                return TimeUtil.toLongForm(Math.abs((time - currentTime) + kit.getCooldown()));
             } else {
                 account.getUsedKits().remove(kit.getName());
             }
