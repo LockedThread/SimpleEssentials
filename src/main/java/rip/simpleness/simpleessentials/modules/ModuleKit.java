@@ -23,7 +23,6 @@ import rip.simpleness.simpleessentials.objs.Kit;
 import javax.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class ModuleKit implements TerminableModule {
 
@@ -128,11 +127,16 @@ public class ModuleKit implements TerminableModule {
 
     public String getKits(Player player) {
         final Account account = INSTANCE.getAccount(player);
-        ArrayList<String> list = kitData.entrySet()
-                .stream()
-                .filter(entry -> entry.getValue().hasPermission(player))
-                .map(entry -> account.getUsedKits().containsKey(entry.getValue().getName()) ? ChatColor.STRIKETHROUGH + entry.getKey() + ChatColor.YELLOW : ChatColor.YELLOW + entry.getKey())
-                .collect(Collectors.toCollection(ArrayList::new));
+        ArrayList<String> list = new ArrayList<>();
+        kitData.forEach((key, kit) -> {
+            if (kit.hasPermission(player)) {
+                if (account.getUsedKits().containsKey(kit.getName()) && ((System.currentTimeMillis() / 1000) - account.getUsedKits().get(kit.getName())) < kit.getCooldown()) {
+                    list.add(ChatColor.STRIKETHROUGH + key + ChatColor.YELLOW);
+                } else {
+                    list.add(ChatColor.YELLOW + key);
+                }
+            }
+        });
         return Joiner.on(", ").skipNulls().join(list);
     }
 
