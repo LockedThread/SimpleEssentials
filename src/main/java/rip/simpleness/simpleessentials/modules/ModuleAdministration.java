@@ -10,6 +10,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.metadata.FixedMetadataValue;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 
@@ -94,6 +95,32 @@ public class ModuleAdministration implements TerminableModule {
                     commandContext.reply(INSTANCE.getServerPrefix() + "&eYour health level has been saturated");
                     commandContext.sender().setHealth(20.0);
                 }).registerAndBind(terminableConsumer, "heal");
+
+        Commands.create()
+                .handler(commandContext -> {
+                    Player target;
+                    if (commandContext.args().size() == 0 && commandContext.sender().hasPermission("simpleness.clearinventory")) {
+                        if (commandContext.sender() instanceof Player) {
+                            target = (Player) commandContext.sender();
+                            target.getInventory().setArmorContents(new ItemStack[]{null, null, null, null});
+                            target.getInventory().clear();
+                            target.updateInventory();
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&cYou've cleared your inventory");
+                        } else {
+                            commandContext.reply("&c/clearinventory [player]");
+                        }
+                    } else if (commandContext.args().size() == 1) {
+                        if (commandContext.sender().hasPermission("simpleness.clearinventory.others")) {
+                            target = commandContext.arg(0).parseOrFail(Player.class);
+                            target.getInventory().setArmorContents(new ItemStack[]{null, null, null, null});
+                            target.getInventory().clear();
+                            target.updateInventory();
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&cYou've cleared the inventory of " + target.getName());
+                        } else {
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&cYou don't have permission to clear other player's inventories");
+                        }
+                    }
+                }).registerAndBind(terminableConsumer, "ci", "clear", "clearinventory");
 
         Commands.create()
                 .assertPermission("simpleness.broadcast")
