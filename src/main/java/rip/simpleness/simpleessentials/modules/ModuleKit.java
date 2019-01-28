@@ -4,13 +4,17 @@ import com.google.common.base.Joiner;
 import com.google.common.reflect.TypeToken;
 import me.lucko.helper.Commands;
 import me.lucko.helper.serialize.GsonStorageHandler;
+import me.lucko.helper.serialize.InventorySerialization;
 import me.lucko.helper.terminable.TerminableConsumer;
 import me.lucko.helper.terminable.module.TerminableModule;
 import me.lucko.helper.text.Text;
+import me.lucko.helper.utils.TimeUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import rip.simpleness.simpleessentials.ParseRegistrar;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 import rip.simpleness.simpleessentials.map.SimplenessMap;
 import rip.simpleness.simpleessentials.objs.Account;
@@ -33,9 +37,21 @@ public class ModuleKit implements TerminableModule {
         this.kitDataGsonStorage = new GsonStorageHandler<>("kits", ".json", INSTANCE.getDataFolder(), new TypeToken<SimplenessMap<String, Kit>>() {
         });
         this.kitData = kitDataGsonStorage.load().orElse(new SimplenessMap<>());
+        kitData.forEach((name, kit) -> {
+            kit.setArmorContents(InventorySerialization.decodeItemStacks(kit.getEncodedArmorContents()));
+            kit.setInventoryContents(InventorySerialization.decodeItemStacks(kit.getEncodedInventoryContents()));
+        });
         terminableConsumer.bind(() -> kitDataGsonStorage.save(kitData));
 
-        Commands.parserRegistry().register(Kit.class, s -> Optional.of(getKit(s)));
+        Commands.parserRegistry().register(Kit.class, ParseRegistrar.buildParser("kit", s -> isKit(s) ? Optional.of(getKit(s)) : Optional.empty()));
+
+        Commands.create()
+                .assertPermission("simpleness.deletekit")
+                .handler(commandContext -> {
+                    Kit kit = commandContext.arg(0).parseOrFail(Kit.class);
+                    deleteKit(kit.getName());
+                    commandContext.reply(INSTANCE.getServerPrefix() + "&cYou have deleted the " + kit.getName() + " kit");
+                }).registerAndBind(terminableConsumer, "deletekit", "delkit");
 
         Commands.create()
                 .assertPlayer()
@@ -43,13 +59,13 @@ public class ModuleKit implements TerminableModule {
                 .assertArgument(0, s -> true)
                 .handler(commandContext -> {
                     if (commandContext.args().size() > 0) {
-                        String warpName = commandContext.arg(0).parseOrFail(String.class);
-                        if (isKit(warpName)) {
-                            commandContext.reply(INSTANCE.getServerPrefix() + "&cThere's already a kit with the name " + warpName + " defined.");
+                        String kitName = commandContext.arg(0).parseOrFail(String.class);
+                        if (isKit(kitName)) {
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&cThere's already a kit with the name " + kitName + " defined.");
                         } else if (commandContext.args().size() == 1) {
-                            createKit(commandContext.sender(), warpName);
+                            createKit(commandContext.sender(), kitName);
                         } else if (commandContext.args().size() == 2) {
-                            createKit(commandContext.sender(), warpName, commandContext.arg(1).parseOrFail(Long.class));
+                            createKit(commandContext.sender(), kitName, commandContext.arg(1).parseOrFail(Long.class));
                         } else {
                             commandContext.reply(INSTANCE.getServerPrefix() + "&e/createkit [name] {cooldown}");
                         }
@@ -64,9 +80,7 @@ public class ModuleKit implements TerminableModule {
                 .handler(commandContext -> {
                     if (commandContext.args().size() == 0) {
                         final String kits = getKits(commandContext.sender());
-                        commandContext.reply(kits.isEmpty() ?
-                                INSTANCE.getServerPrefix() + "&eYou don't have access to any kits!" :
-                                INSTANCE.getServerPrefix() + "&eKits: " + kits);
+                        commandContext.reply(kits.isEmpty() ? INSTANCE.getServerPrefix() + "&eYou don't have access to any kits!" : INSTANCE.getServerPrefix() + "&eKits: " + kits);
                     } else if (commandContext.label().equalsIgnoreCase("kits")) {
                         commandContext.reply(INSTANCE.getServerPrefix() + "&e/kits");
                     } else if (commandContext.args().size() == 1) {
@@ -76,6 +90,11 @@ public class ModuleKit implements TerminableModule {
                         } else {
                             commandContext.reply(INSTANCE.getServerPrefix() + "&eYou don't have permission to use this kit!");
                         }
+                    } else if (commandContext.args().size() == 2) {
+                        Kit kit = commandContext.arg(0).parseOrFail(Kit.class);
+                        Player target = commandContext.arg(1).parseOrFail(Player.class);
+                        giveKit(target, kit);
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&aYou have given &e" + target.getName() + " &athe " + kit.getName() + " kit");
                     } else {
                         commandContext.reply("&e/kit [name]");
                     }
@@ -85,9 +104,20 @@ public class ModuleKit implements TerminableModule {
                 .assertPlayer()
                 .assertPermission("simpleness.createkit")
                 .handler(commandContext -> {
-
+                    if (commandContext.args().size() >= 1) {
+                        String name = commandContext.arg(0).parseOrFail(String.class);
+                        if (isKit(name)) {
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&cYou're unable to create a kit that already exists.");
+                        } else if (commandContext.args().size() == 2) {
+                            long cooldown = commandContext.arg(1).parseOrFail(Long.class);
+                            createKit(commandContext.sender(), name, cooldown);
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have created a kit with a cooldown of " + cooldown + " seconds");
+                        } else {
+                            createKit(commandContext.sender(), name);
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have created a kit with no cooldown");
+                        }
+                    }
                 }).registerAndBind(terminableConsumer, "createkit");
-
     }
 
 
@@ -102,7 +132,8 @@ public class ModuleKit implements TerminableModule {
     }
 
     public void createKit(Player player, String name, long cooldown) {
-        Kit kit = new Kit(name, player.getInventory().getContents(), player.getInventory().getArmorContents(), cooldown, false, "", new String[0]);
+        name = name.toLowerCase();
+        Kit kit = new Kit(name, player.getInventory().getContents(), player.getInventory().getArmorContents(), cooldown, false, "", new ArrayList<>());
         kitData.put(name, kit);
     }
 
@@ -110,8 +141,8 @@ public class ModuleKit implements TerminableModule {
         createKit(player, name, 0L);
     }
 
-    public void deleteKit(String warpName) {
-        kitData.remove(warpName);
+    public void deleteKit(String key) {
+        kitData.remove(key);
     }
 
     public Kit getKit(String key) {
@@ -122,9 +153,25 @@ public class ModuleKit implements TerminableModule {
         return kitData.containsKey(key.toLowerCase());
     }
 
-    public void giveKit(Player player, Kit kit) {
+    public String giveKit(Player player, Kit kit) {
+        final Account account = INSTANCE.getAccount(player);
+
+        long currentTime = System.currentTimeMillis() / 1000;
+        if (account.getUsedKits().containsKey(kit.getName())) {
+            long time = account.getUsedKits().get(kit.getName());
+            long subtracted = currentTime - time;
+            if (subtracted < kit.getCooldown()) {
+                return TimeUtil.toLongForm(subtracted);
+            } else {
+                account.getUsedKits().remove(kit.getName());
+            }
+        }
+        if (kit.getCooldown() > 0) {
+            account.getUsedKits().put(kit.getName(), currentTime);
+        }
         boolean drop = false;
         for (ItemStack itemStack : kit.getInventoryContents()) {
+            if (itemStack == null || itemStack.getType() == Material.AIR) continue;
             if (player.getInventory().firstEmpty() == -1) {
                 player.getWorld().dropItemNaturally(player.getLocation(), itemStack);
                 drop = true;
@@ -133,6 +180,7 @@ public class ModuleKit implements TerminableModule {
             }
         }
         for (ItemStack itemStack : kit.getArmorContents()) {
+            if (itemStack == null || itemStack.getType() == Material.AIR) continue;
             if (player.getInventory().firstEmpty() == -1) {
                 player.getWorld().dropItemNaturally(player.getLocation(), itemStack);
                 drop = true;
@@ -140,15 +188,12 @@ public class ModuleKit implements TerminableModule {
                 player.getInventory().addItem(itemStack);
             }
         }
-
-        INSTANCE.getAccount(player).getUsedKits().put(kit.getName(), System.currentTimeMillis());
-
         for (String command : kit.getCommands()) {
             Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
         }
-
         if (drop) {
             player.sendMessage(Text.colorize(INSTANCE.getServerPrefix() + "&cSome items don't fit in your inventory and were dropped."));
         }
+        return "";
     }
 }

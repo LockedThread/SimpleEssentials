@@ -1,22 +1,24 @@
 package rip.simpleness.simpleessentials.objs;
 
+import me.lucko.helper.serialize.InventorySerialization;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 
 public final class Kit {
 
-    private final String name;
-    private final ItemStack[] inventoryContents;
-    private final ItemStack[] armorContents;
+    private final String name, encodedInventoryContents, encodedArmorContents;
+    private final List<String> commands;
     private final long cooldown;
     private final boolean oneTimeUse;
     private final String permission;
-    private final String[] commands;
+    private transient ItemStack[] inventoryContents, armorContents;
 
-    public Kit(String name, ItemStack[] inventoryContents, ItemStack[] armorContents, long cooldown, boolean oneTimeUse, String permission, String[] commands) {
+    public Kit(@NotNull String name, @NotNull ItemStack[] inventoryContents, @NotNull ItemStack[] armorContents, long cooldown, boolean oneTimeUse, @NotNull String permission, @NotNull List<String> commands) {
         this.name = name;
         this.inventoryContents = inventoryContents;
         this.armorContents = armorContents;
@@ -24,6 +26,8 @@ public final class Kit {
         this.oneTimeUse = oneTimeUse;
         this.permission = permission;
         this.commands = commands;
+        this.encodedInventoryContents = InventorySerialization.encodeItemStacksToString(inventoryContents);
+        this.encodedArmorContents = InventorySerialization.encodeItemStacksToString(armorContents);
     }
 
     public boolean hasPermission(Player player) {
@@ -50,8 +54,16 @@ public final class Kit {
         return permission;
     }
 
-    public String[] getCommands() {
+    public List<String> getCommands() {
         return commands;
+    }
+
+    public void setArmorContents(ItemStack[] armorContents) {
+        this.armorContents = armorContents;
+    }
+
+    public void setInventoryContents(ItemStack[] inventoryContents) {
+        this.inventoryContents = inventoryContents;
     }
 
     @Override
@@ -61,34 +73,47 @@ public final class Kit {
         Kit kit = (Kit) o;
         return cooldown == kit.cooldown &&
                 oneTimeUse == kit.oneTimeUse &&
+                Objects.equals(name, kit.name) &&
+                Objects.equals(encodedInventoryContents, kit.encodedInventoryContents) &&
+                Objects.equals(encodedArmorContents, kit.encodedArmorContents) &&
                 Arrays.equals(inventoryContents, kit.inventoryContents) &&
                 Arrays.equals(armorContents, kit.armorContents) &&
                 Objects.equals(permission, kit.permission) &&
-                Arrays.equals(commands, kit.commands);
+                Objects.equals(commands, kit.commands);
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(cooldown, oneTimeUse, permission);
+        int result = Objects.hash(name, encodedInventoryContents, encodedArmorContents, cooldown, oneTimeUse, permission, commands);
         result = 31 * result + Arrays.hashCode(inventoryContents);
         result = 31 * result + Arrays.hashCode(armorContents);
-        result = 31 * result + Arrays.hashCode(commands);
         return result;
     }
 
     @Override
     public String toString() {
         return "Kit{" +
-                "inventoryContents=" + Arrays.toString(inventoryContents) +
+                "name='" + name + '\'' +
+                ", encodedInventoryContents='" + encodedInventoryContents + '\'' +
+                ", encodedArmorContents='" + encodedArmorContents + '\'' +
+                ", inventoryContents=" + Arrays.toString(inventoryContents) +
                 ", armorContents=" + Arrays.toString(armorContents) +
                 ", cooldown=" + cooldown +
                 ", oneTimeUse=" + oneTimeUse +
                 ", permission='" + permission + '\'' +
-                ", commands=" + Arrays.toString(commands) +
+                ", commands=" + commands +
                 '}';
     }
 
     public String getName() {
         return name;
+    }
+
+    public String getEncodedInventoryContents() {
+        return encodedInventoryContents;
+    }
+
+    public String getEncodedArmorContents() {
+        return encodedArmorContents;
     }
 }
