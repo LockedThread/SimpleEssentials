@@ -118,7 +118,6 @@ public class ModuleWarp implements TerminableModule {
     }
 
     public boolean teleport(Player player, Warp warp) {
-        if (warp == null) return false;
-        return player.teleport(warp.getPoint().toLocation(), PlayerTeleportEvent.TeleportCause.COMMAND);
+        return warp != null && player.teleport(warp.getPoint().toLocation(), PlayerTeleportEvent.TeleportCause.COMMAND);
     }
 }
