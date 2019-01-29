@@ -54,7 +54,7 @@ public final class Account {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Account account = (Account) o;
-        return Double.compare(account.money, money) == 0 &&
+        return account.money == money &&
                 Objects.equals(lastKnownName, account.lastKnownName) &&
                 Objects.equals(usedKits, account.usedKits);
     }
