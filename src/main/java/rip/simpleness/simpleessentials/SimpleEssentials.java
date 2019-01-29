@@ -37,8 +37,6 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
 
     private Jedis jedis;
 
-    private ModuleWarp moduleWarp;
-
     @Override
     protected void enable() {
         /*
@@ -58,7 +56,6 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
         /*
          * Storage & Data
          */
-
         jedis = new Jedis(getConfig().getString("redis.address"), getConfig().getInt("redis.port"));
         jedis.auth(getConfig().getString("redis.password"));
         this.accountData = new HashMap<>();
@@ -66,8 +63,7 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
         /*
          * Modules
          */
-        this.moduleWarp = new ModuleWarp();
-        bindModule(moduleWarp);
+        bindModule(new ModuleWarp());
         bindModule(new ModuleAccount());
         bindModule(new ModuleEconomy());
         bindModule(new ModuleTeleportation());
@@ -136,10 +132,6 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
 
     public Jedis getJedis() {
         return jedis;
-    }
-
-    public ModuleWarp getModuleWarp() {
-        return moduleWarp;
     }
 
     /*
