@@ -8,9 +8,11 @@ import me.lucko.helper.text.Text;
 import me.lucko.helper.utils.Players;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 
@@ -158,5 +160,21 @@ public class ModuleAdministration implements TerminableModule {
                         }
                     }
                 }).registerAndBind(terminableConsumer, "vanish", "v");
+
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.rename")
+                .handler(commandContext -> {
+                    ItemStack itemInHand = commandContext.sender().getItemInHand();
+                    if (itemInHand == null || itemInHand.getType() == Material.AIR) {
+                        commandContext.reply("&cYou must have an item in your hand to edit the name.");
+                    } else {
+                        String joinedText = commandContext.args().size() >= 1 ? Joiner.on(" ").skipNulls().join(commandContext.args()) : "nothing";
+                        ItemMeta itemMeta = itemInHand.getItemMeta();
+                        itemMeta.setDisplayName(Text.colorize(joinedText));
+                        itemInHand.setItemMeta(itemMeta);
+                        commandContext.reply("&eYou have renamed the item in your hand to " + joinedText);
+                    }
+                }).registerAndBind(terminableConsumer, "rename");
     }
 }
