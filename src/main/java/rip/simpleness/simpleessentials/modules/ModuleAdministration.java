@@ -173,6 +173,7 @@ public class ModuleAdministration implements TerminableModule {
                         ItemMeta itemMeta = itemInHand.getItemMeta();
                         itemMeta.setDisplayName(Text.colorize(joinedText));
                         itemInHand.setItemMeta(itemMeta);
+                        commandContext.sender().setItemInHand(itemInHand);
                         commandContext.reply("&eYou have renamed the item in your hand to " + joinedText);
                     }
                 }).registerAndBind(terminableConsumer, "rename");
