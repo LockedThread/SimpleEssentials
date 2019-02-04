@@ -11,6 +11,7 @@ import rip.simpleness.simpleessentials.SimpleEssentials;
 import rip.simpleness.simpleessentials.objs.Account;
 
 import javax.annotation.Nonnull;
+import java.text.DecimalFormat;
 
 public class ModuleEconomy implements TerminableModule {
 
@@ -20,7 +21,17 @@ public class ModuleEconomy implements TerminableModule {
     public void setup(@Nonnull TerminableConsumer terminableConsumer) {
         Commands.create()
                 .assertPlayer()
-                .handler(commandContext -> commandContext.reply("&eBalance: &f" + INSTANCE.getAccount(commandContext.sender()).getMoney()))
+                .handler(commandContext -> {
+                    if (commandContext.args().size() == 0) {
+                        commandContext.reply("&eBalance: &f$" + new DecimalFormat("#0.00").format(INSTANCE.getAccount(commandContext.sender()).getMoney()));
+                    } else if (commandContext.args().size() == 1) {
+                        if (commandContext.sender().hasPermission("simpleness.balance.others")) {
+                            commandContext.reply("&eBalance: &f$" + new DecimalFormat("#0.00").format(INSTANCE.getAccount(commandContext.arg(0).parseOrFail(Player.class)).getMoney()));
+                        } else {
+                            commandContext.reply("&cYou don't have permission to check other's balances");
+                        }
+                    }
+                })
                 .registerAndBind(terminableConsumer, "balance", "bal");
 
         Commands.create()
