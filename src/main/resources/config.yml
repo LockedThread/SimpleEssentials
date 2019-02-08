@@ -2,6 +2,7 @@ redis:
   address: '127.0.0.1'
   port: 6379
   password: '6ytqYNW4kUeZxrEpX0E6vgjgtmLALL/Bvs6Tpv5Tkscr3MjumCOZXB9YVXLfTYKhsVAOaaKt8y/eAy/6PYIiAL02dqgaU/NQmk4MkyReo/CJ8BM0Dk74Eg8sSZDCqsVQwnMDiLTZD/xT+gys2K4a1mlnIBJdKLBlSW2tqGCBkW0='
+disable-weather: true
 default-money: 15000.0
 player-joins: 0
 server-prefix: '&8[&e&lMineage&6&lPVP&8] '

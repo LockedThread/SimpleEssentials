@@ -34,6 +34,7 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
     private double defaultMoney;
     private String firstJoinMessage, motdMessage, serverPrefix, broadcastPrefix;
     private int playerJoins;
+    private boolean disableWeather;
 
     private Jedis jedis;
 
@@ -43,6 +44,7 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
          * Config
          */
         saveDefaultConfig();
+        this.disableWeather = getConfig().getBoolean("disable-weather");
         this.defaultMoney = getConfig().getDouble("default-money");
         this.firstJoinMessage = Text.colorize(getConfig().getString("first-join-message"));
         this.motdMessage = getConfig().getStringList("motd-message")
@@ -69,6 +71,7 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
         bindModule(new ModuleTeleportation());
         bindModule(new ModuleAdministration());
         bindModule(new ModuleKit());
+        bindModule(new ModuleFixes());
 
         /*
          * Economy/Vault
@@ -164,5 +167,9 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
 
     public String getBroadcastPrefix() {
         return broadcastPrefix;
+    }
+
+    public boolean isDisableWeather() {
+        return disableWeather;
     }
 }
