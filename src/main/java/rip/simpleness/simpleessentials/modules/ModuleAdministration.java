@@ -174,8 +174,32 @@ public class ModuleAdministration implements TerminableModule {
                         itemMeta.setDisplayName(Text.colorize(joinedText));
                         itemInHand.setItemMeta(itemMeta);
                         commandContext.sender().setItemInHand(itemInHand);
-                        commandContext.reply("&eYou have renamed the item in your hand to " + joinedText);
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have renamed the item in your hand to " + joinedText);
                     }
                 }).registerAndBind(terminableConsumer, "rename");
+
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.speed")
+                .handler(commandContext -> {
+                    if (commandContext.args().size() == 1) {
+                        int speed = commandContext.arg(0).parseOrFail(Integer.class);
+                        if (speed > 10) {
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&cUnable to set your speed to greater than 10.");
+                        } else {
+                            String type;
+                            if (commandContext.sender().isFlying()) {
+                                type = "flight";
+                                commandContext.sender().setFlySpeed((float) speed / 10);
+                            } else {
+                                type = "walking";
+                                commandContext.sender().setWalkSpeed((float) speed / 10);
+                            }
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&aYou have set your " + type + " speed to " + speed);
+                        }
+                    } else {
+                        commandContext.reply("&e/speed [amplifier]");
+                    }
+                }).registerAndBind(terminableConsumer, "speed");
     }
 }
