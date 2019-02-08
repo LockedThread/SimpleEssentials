@@ -30,7 +30,7 @@ public class ModuleAccount implements TerminableModule {
         Events.subscribe(PlayerJoinEvent.class)
                 .handler(event -> {
                     Player player = event.getPlayer();
-                    if (INSTANCE.getJedis().exists(player.getUniqueId().toString())) {
+                    if (player.hasPlayedBefore()) {
                         Account account = GsonProvider.prettyPrinting().fromJson(INSTANCE.getJedis().get(player.getUniqueId().toString()), Account.class);
                         INSTANCE.getAccountData().put(player.getUniqueId(), account);
                     } else {
