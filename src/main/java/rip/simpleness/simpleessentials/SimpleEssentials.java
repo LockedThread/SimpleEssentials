@@ -38,6 +38,8 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
 
     private Jedis jedis;
 
+    private ModuleAdministration moduleAdministration;
+
     @Override
     protected void enable() {
         /*
@@ -66,12 +68,14 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
          * Modules
          */
         bindModule(new ModuleWarp());
-        bindModule(new ModuleAccount());
         bindModule(new ModuleEconomy());
         bindModule(new ModuleTeleportation());
         bindModule(new ModuleAdministration());
         bindModule(new ModuleKit());
         bindModule(new ModuleFixes());
+        bindModule(new ModuleAccount());
+        this.moduleAdministration = new ModuleAdministration();
+        bindModule(moduleAdministration);
 
         /*
          * Economy/Vault
@@ -171,5 +175,9 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
 
     public boolean isDisableWeather() {
         return disableWeather;
+    }
+
+    public ModuleAdministration getModuleAdministration() {
+        return moduleAdministration;
     }
 }
