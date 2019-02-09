@@ -9,6 +9,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 import rip.simpleness.simpleessentials.objs.Account;
 
@@ -39,6 +40,9 @@ public class ModuleAccount implements TerminableModule {
                         Bukkit.broadcastMessage(INSTANCE.getFirstJoinMessage()
                                 .replace("{player}", player.getName())
                                 .replace("{join-times}", String.valueOf(INSTANCE.getPlayerJoins())));
+                        if (INSTANCE.getModuleAdministration().getSpawnPoint() != null) {
+                            player.teleport(INSTANCE.getModuleAdministration().getSpawnPoint().toLocation(), PlayerTeleportEvent.TeleportCause.PLUGIN);
+                        }
                     }
                 }).bindWith(terminableConsumer);
 
