@@ -1,7 +1,10 @@
 package rip.simpleness.simpleessentials.modules;
 
 import com.google.common.base.Joiner;
+import com.google.common.reflect.TypeToken;
 import me.lucko.helper.Commands;
+import me.lucko.helper.serialize.GsonStorageHandler;
+import me.lucko.helper.serialize.Point;
 import me.lucko.helper.terminable.TerminableConsumer;
 import me.lucko.helper.terminable.module.TerminableModule;
 import me.lucko.helper.text.Text;
@@ -21,6 +24,8 @@ import javax.annotation.Nonnull;
 public class ModuleAdministration implements TerminableModule {
 
     private static final SimpleEssentials INSTANCE = SimpleEssentials.getInstance();
+    private GsonStorageHandler<Point> spawnDataStorage;
+    private Point spawnPoint;
 
     @Override
     public void setup(@Nonnull TerminableConsumer terminableConsumer) {
@@ -201,5 +206,35 @@ public class ModuleAdministration implements TerminableModule {
                         commandContext.reply("&e/speed [amplifier]");
                     }
                 }).registerAndBind(terminableConsumer, "speed");
+
+        this.spawnDataStorage = new GsonStorageHandler<>("spawn", ".json", INSTANCE.getDataFolder(), new TypeToken<Point>() {
+        });
+        this.spawnPoint = spawnDataStorage.load().orElse(null);
+        terminableConsumer.bind(() -> spawnDataStorage.save(spawnPoint));
+
+
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.setspawn")
+                .handler(commandContext -> {
+                    Point point = Point.of(commandContext.sender().getLocation());
+                    this.spawnPoint = point;
+                    commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have set the spawn at " + point.toString());
+                    commandContext.sender().getWorld().setSpawnLocation(commandContext.sender().getLocation().getBlockX(), commandContext.sender().getLocation().getBlockY(), commandContext.sender().getLocation().getBlockZ());
+                }).registerAndBind(terminableConsumer, "setspawn");
+
+        Commands.create()
+                .assertPlayer()
+                .handler(commandContext -> {
+                    if (spawnPoint == null) {
+                        commandContext.sender().teleport(commandContext.sender().getWorld().getSpawnLocation(), PlayerTeleportEvent.TeleportCause.COMMAND);
+                    } else {
+                        commandContext.sender().teleport(spawnPoint.toLocation(), PlayerTeleportEvent.TeleportCause.COMMAND);
+                    }
+                }).registerAndBind(terminableConsumer, "spawn");
+    }
+
+    public Point getSpawnPoint() {
+        return spawnPoint;
     }
 }
