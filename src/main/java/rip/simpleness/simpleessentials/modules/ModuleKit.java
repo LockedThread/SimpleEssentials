@@ -75,6 +75,20 @@ public class ModuleKit implements TerminableModule {
 
         Commands.create()
                 .assertPlayer()
+                .assertPermission("simpleness.addkitcommand")
+                .handler(commandContext -> {
+                    if (commandContext.args().size() >= 2) {
+                        Kit kit = commandContext.arg(0).parseOrFail(Kit.class);
+                        String command = Joiner.on(" ").skipNulls().join(commandContext.args().subList(1, commandContext.args().size()));
+                        kit.getCommands().add(command.startsWith("/") ? command.substring(1) : command);
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&aYou've added the kit command \"" + command + "\" to " + kit.getName());
+                    } else {
+                        commandContext.reply("&e/addkitcommand [kit] [command]");
+                    }
+                }).registerAndBind(terminableConsumer, "addkitcommand");
+
+        Commands.create()
+                .assertPlayer()
                 .assertPermission("simpleness.kits")
                 .handler(commandContext -> {
                     if (commandContext.args().size() == 0) {
