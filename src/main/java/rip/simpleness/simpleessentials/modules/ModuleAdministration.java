@@ -3,6 +3,8 @@ package rip.simpleness.simpleessentials.modules;
 import com.google.common.base.Joiner;
 import com.google.common.reflect.TypeToken;
 import me.lucko.helper.Commands;
+import me.lucko.helper.command.CommandInterruptException;
+import me.lucko.helper.command.argument.ArgumentParser;
 import me.lucko.helper.serialize.GsonStorageHandler;
 import me.lucko.helper.serialize.Point;
 import me.lucko.helper.terminable.TerminableConsumer;
@@ -12,6 +14,7 @@ import me.lucko.helper.utils.Players;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
@@ -20,12 +23,14 @@ import org.bukkit.metadata.FixedMetadataValue;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 
 import javax.annotation.Nonnull;
+import java.util.HashMap;
+import java.util.Optional;
 
 public class ModuleAdministration implements TerminableModule {
 
     private static final SimpleEssentials INSTANCE = SimpleEssentials.getInstance();
-    private GsonStorageHandler<Point> spawnDataStorage;
-    private Point spawnPoint;
+    private GsonStorageHandler<HashMap<String, Point>> spawnDataStorage;
+    private HashMap<String, Point> spawnPoints;
 
     @Override
     public void setup(@Nonnull TerminableConsumer terminableConsumer) {
@@ -207,10 +212,10 @@ public class ModuleAdministration implements TerminableModule {
                     }
                 }).registerAndBind(terminableConsumer, "speed");
 
-        this.spawnDataStorage = new GsonStorageHandler<>("spawn", ".json", INSTANCE.getDataFolder(), new TypeToken<Point>() {
+        this.spawnDataStorage = new GsonStorageHandler<>("spawns", ".json", INSTANCE.getDataFolder(), new TypeToken<HashMap<String, Point>>() {
         });
-        this.spawnPoint = spawnDataStorage.load().orElse(null);
-        terminableConsumer.bind(() -> spawnDataStorage.save(spawnPoint));
+        this.spawnPoints = spawnDataStorage.load().orElse(new HashMap<>());
+        terminableConsumer.bind(() -> spawnDataStorage.save(spawnPoints));
 
 
         Commands.create()
@@ -218,28 +223,46 @@ public class ModuleAdministration implements TerminableModule {
                 .assertPermission("simpleness.setspawn")
                 .handler(commandContext -> {
                     Point point = Point.of(commandContext.sender().getLocation());
-                    this.spawnPoint = point;
+                    spawnPoints.put("default", point);
                     commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have set the spawn at " + point.toString());
                     commandContext.sender().getWorld().setSpawnLocation(commandContext.sender().getLocation().getBlockX(), commandContext.sender().getLocation().getBlockY(), commandContext.sender().getLocation().getBlockZ());
                 }).registerAndBind(terminableConsumer, "setspawn");
 
         Commands.create()
                 .assertPlayer()
-                .handler(commandContext -> {
-                    if (spawnPoint == null) {
-                        commandContext.sender().teleport(commandContext.sender().getWorld().getSpawnLocation(), PlayerTeleportEvent.TeleportCause.COMMAND);
-                    } else {
-                        commandContext.sender().teleport(spawnPoint.toLocation(), PlayerTeleportEvent.TeleportCause.COMMAND);
-                    }
-                }).registerAndBind(terminableConsumer, "spawn");
+                .handler(commandContext -> commandContext.sender().teleport(spawnPoints.get("default").toLocation(), PlayerTeleportEvent.TeleportCause.COMMAND))
+                .registerAndBind(terminableConsumer, "spawn");
 
         Commands.create()
                 .assertPlayer()
                 .assertPermission("simpleness.enderchest")
                 .handler(commandContext -> commandContext.sender().openInventory(commandContext.sender().getEnderChest())).registerAndBind(terminableConsumer, "enderchest", "ec");
+
+        Commands.parserRegistry().register(Enchantment.class, ArgumentParser.of(s -> {
+            final Enchantment enchantment = Enchantment.getByName("s");
+            return enchantment == null ? Optional.empty() : Optional.of(enchantment);
+        }, s -> new CommandInterruptException("&cUnable to parse " + s + " as an Enchantment")));
+
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.enchant")
+                .handler(commandContext -> {
+                    if (commandContext.args().size() == 2) {
+                        if (commandContext.sender().getItemInHand() == null) {
+                            commandContext.reply("&cYou can't enchant nothing!");
+                        } else {
+                            Enchantment enchantment = commandContext.arg(0).parseOrFail(Enchantment.class);
+                            int level = commandContext.arg(1).parseOrFail(Integer.class);
+                            commandContext.sender().getItemInHand().addUnsafeEnchantment(enchantment, level);
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&aYou have enchanted your item with " + enchantment.getName() + " " + level);
+                        }
+                    } else {
+                        commandContext.reply("/enchant [enchantment] [level]");
+                    }
+                }).registerAndBind(terminableConsumer, "enchant");
     }
 
-    public Point getSpawnPoint() {
-        return spawnPoint;
+    public HashMap<String, Point> getSpawnPoints() {
+        return spawnPoints;
     }
 }
