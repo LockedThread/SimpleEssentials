@@ -232,6 +232,11 @@ public class ModuleAdministration implements TerminableModule {
                         commandContext.sender().teleport(spawnPoint.toLocation(), PlayerTeleportEvent.TeleportCause.COMMAND);
                     }
                 }).registerAndBind(terminableConsumer, "spawn");
+
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.enderchest")
+                .handler(commandContext -> commandContext.sender().openInventory(commandContext.sender().getEnderChest())).registerAndBind(terminableConsumer, "enderchest", "ec");
     }
 
     public Point getSpawnPoint() {
