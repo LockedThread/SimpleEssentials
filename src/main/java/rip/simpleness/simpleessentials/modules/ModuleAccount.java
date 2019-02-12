@@ -48,7 +48,7 @@ public class ModuleAccount implements TerminableModule {
                                 .replace("{player}", player.getName())
                                 .replace("{join-times}", String.valueOf(INSTANCE.getPlayerJoins())));
                         if (INSTANCE.getModuleAdministration().getSpawnPoints().containsKey("default")) {
-                            player.teleport(INSTANCE.getModuleAdministration().getSpawnPoints().get("default").toLocation(), PlayerTeleportEvent.TeleportCause.PLUGIN);
+                            Bukkit.getScheduler().runTaskLater(INSTANCE, () -> player.teleport(INSTANCE.getModuleAdministration().getSpawnPoints().get("default").toLocation(), PlayerTeleportEvent.TeleportCause.PLUGIN), 2L);
                         }
                     }
                 }).bindWith(terminableConsumer);
