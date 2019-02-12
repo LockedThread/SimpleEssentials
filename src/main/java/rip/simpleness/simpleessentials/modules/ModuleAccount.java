@@ -1,6 +1,9 @@
 package rip.simpleness.simpleessentials.modules;
 
+import me.lucko.helper.Commands;
 import me.lucko.helper.Events;
+import me.lucko.helper.command.CommandInterruptException;
+import me.lucko.helper.command.argument.ArgumentParser;
 import me.lucko.helper.gson.GsonProvider;
 import me.lucko.helper.terminable.TerminableConsumer;
 import me.lucko.helper.terminable.module.TerminableModule;
@@ -14,6 +17,7 @@ import rip.simpleness.simpleessentials.SimpleEssentials;
 import rip.simpleness.simpleessentials.objs.Account;
 
 import javax.annotation.Nonnull;
+import java.util.Optional;
 
 public class ModuleAccount implements TerminableModule {
 
@@ -27,6 +31,9 @@ public class ModuleAccount implements TerminableModule {
                 INSTANCE.getAccountData().put(player.getUniqueId(), account);
             }
         }
+
+        Commands.parserRegistry().register(Account.class, ArgumentParser.of(s -> Optional.of(INSTANCE.getAccount(s)),
+                s -> new CommandInterruptException("&cUnable to find account \"" + s + "\"")));
 
         Events.subscribe(PlayerJoinEvent.class)
                 .handler(event -> {
