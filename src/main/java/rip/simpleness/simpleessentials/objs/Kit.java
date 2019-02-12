@@ -31,7 +31,7 @@ public final class Kit {
     }
 
     public boolean hasPermission(Player player) {
-        return permission.isEmpty() || player.hasPermission(permission);
+        return permission.isEmpty() || player.hasPermission(permission) || player.isOp();
     }
 
     public ItemStack[] getInventoryContents() {

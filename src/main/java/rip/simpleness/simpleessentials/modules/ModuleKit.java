@@ -140,6 +140,9 @@ public class ModuleKit implements TerminableModule {
 
 
     public String getKits(Player player) {
+        if (player.isOp()) {
+            return Joiner.on(", ").skipNulls().join(kitData.keySet());
+        }
         final Account account = INSTANCE.getAccount(player);
         ArrayList<String> list = new ArrayList<>();
         kitData.forEach((key, kit) -> {
@@ -212,7 +215,7 @@ public class ModuleKit implements TerminableModule {
             }
         }
         for (String command : kit.getCommands()) {
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command);
+            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), command.replace("{player}", player.getName()));
         }
         if (drop) {
             player.sendMessage(Text.colorize(INSTANCE.getServerPrefix() + "&cSome items don't fit in your inventory and were dropped."));
