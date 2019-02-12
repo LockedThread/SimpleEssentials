@@ -82,7 +82,7 @@ public class ModuleHome implements TerminableModule {
     }
 
     private boolean canSetAnotherHome(Player player, int currentSize) {
-        if (player.hasPermission("simpleness.homes.unlimited")) {
+        if (player.hasPermission("simpleness.homes.unlimited") || player.isOp()) {
             return true;
         }
         for (PermissionAttachmentInfo permission : player.getEffectivePermissions()) {
