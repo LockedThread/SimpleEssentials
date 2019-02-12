@@ -32,8 +32,24 @@ public class ModuleTeleportation implements TerminableModule {
                         commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have requested to teleport to " + target.getName());
                         target.sendMessage(Text.colorize(INSTANCE.getServerPrefix() + "&eYou have been requested to be tp'd to by " + commandContext.sender().getName() + "\n" +
                                 INSTANCE.getServerPrefix() + "&eDo /tpaccept to accept the tpa."));
+                    } else {
+                        commandContext.reply("&e/tpa [player]");
                     }
                 }).registerAndBind(terminableConsumer, "tpa");
+
+        Commands.create()
+                .assertPlayer()
+                .handler(commandContext -> {
+                    if (commandContext.args().size() == 1) {
+                        Player target = commandContext.arg(0).parseOrFail(Player.class);
+                        teleportationRequests.put(target.getUniqueId(), commandContext.sender().getUniqueId());
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have requested for" + target.getName() + "to teleport to you ");
+                        target.sendMessage(Text.colorize(INSTANCE.getServerPrefix() + "&eYou have been requested to be tp'd to " + commandContext.sender().getName() + "\n" +
+                                INSTANCE.getServerPrefix() + "&eDo /tpaccept to accept the tpahere."));
+                    } else {
+                        commandContext.reply("&e/tpahere [player]");
+                    }
+                }).registerAndBind(terminableConsumer, "tpahere");
 
         Commands.create()
                 .assertPlayer()
