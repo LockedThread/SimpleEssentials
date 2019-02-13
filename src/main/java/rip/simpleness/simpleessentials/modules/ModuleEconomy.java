@@ -25,11 +25,13 @@ public class ModuleEconomy implements TerminableModule {
 
     @Override
     public void setup(@Nonnull TerminableConsumer terminableConsumer) {
-        try {
-            this.baltop = calculateBalTop().get();
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        }
+        INSTANCE.getServer().getScheduler().runTaskTimer(INSTANCE, () -> {
+            try {
+                baltop = calculateBalTop().get();
+            } catch (InterruptedException | ExecutionException e) {
+                e.printStackTrace();
+            }
+        }, 0, 6000);
         Commands.create()
                 .assertPlayer()
                 .handler(commandContext -> {
@@ -119,9 +121,9 @@ public class ModuleEconomy implements TerminableModule {
                             return;
                         }
                         final Account account = baltop.get(i);
-                        commandContext.reply("&e" + account.getLastKnownName() + ", $" + new DecimalFormat("#0.00").format(account.getMoney()));
+                        commandContext.reply("&e" + account.getLastKnownName() + ", " + new DecimalFormat("$###,###.##").format(account.getMoney()));
                     }
-                    commandContext.reply("");
+                    commandContext.reply(" ");
                 }).registerAndBind(terminableConsumer, "baltop");
     }
 
