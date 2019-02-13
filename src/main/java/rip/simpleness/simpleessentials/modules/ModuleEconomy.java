@@ -1,6 +1,7 @@
 package rip.simpleness.simpleessentials.modules;
 
 import me.lucko.helper.Commands;
+import me.lucko.helper.promise.Promise;
 import me.lucko.helper.terminable.TerminableConsumer;
 import me.lucko.helper.terminable.module.TerminableModule;
 import me.lucko.helper.text.Text;
@@ -12,13 +13,23 @@ import rip.simpleness.simpleessentials.objs.Account;
 
 import javax.annotation.Nonnull;
 import java.text.DecimalFormat;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 public class ModuleEconomy implements TerminableModule {
 
     private static final SimpleEssentials INSTANCE = SimpleEssentials.getInstance();
 
+    private List<Account> baltop;
+
     @Override
     public void setup(@Nonnull TerminableConsumer terminableConsumer) {
+        try {
+            this.baltop = calculateBalTop().get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
         Commands.create()
                 .assertPlayer()
                 .handler(commandContext -> {
@@ -30,6 +41,11 @@ public class ModuleEconomy implements TerminableModule {
                         } else {
                             commandContext.reply("&cYou don't have permission to check other's balances");
                         }
+                    } else {
+                        if (commandContext.sender().hasPermission("simpleness.balance.others")) {
+                            commandContext.reply("&e/bal [player]");
+                        }
+                        commandContext.reply("&e/bal");
                     }
                 })
                 .registerAndBind(terminableConsumer, "balance", "bal");
@@ -92,5 +108,30 @@ public class ModuleEconomy implements TerminableModule {
                         commandContext.reply("", "&e/eco reset [player]", "&e/eco give [player] [money]", "&e/eco withdraw [player] [money]", "&e/eco set [player] [amount]", "");
                     }
                 }).registerAndBind(terminableConsumer, "economy", "eco");
+
+        Commands.create()
+                .handler(commandContext -> {
+                    int page = commandContext.args().size() == 1 ? commandContext.arg(0).parseOrFail(Integer.class) : 1;
+                    int maxPages = baltop.size() / (page * 10) + 1;
+                    commandContext.reply("\n&e---- &fBalanceTop &e-- &fPage[&e" + page + "&f/" + "&e" + maxPages + "&f] &e----");
+                    for (int i = 0; i < page * 10; i++) {
+                        if (i >= baltop.size()) {
+                            return;
+                        }
+                        final Account account = baltop.get(i);
+                        commandContext.reply("&e" + account.getLastKnownName() + ", $" + new DecimalFormat("#0.00").format(account.getMoney()));
+                    }
+                    commandContext.reply("");
+                }).registerAndBind(terminableConsumer, "baltop");
+    }
+
+    private Promise<ArrayList<Account>> calculateBalTop() {
+        return Promise.start()
+                .thenApplyAsync(aVoid -> INSTANCE.getJedis().keys("*")
+                        .stream()
+                        .map(s -> INSTANCE.getOfflineAccount(UUID.fromString(s)))
+                        .filter(Objects::nonNull)
+                        .sorted(Comparator.comparingDouble(Account::getMoney))
+                        .collect(Collectors.toCollection(ArrayList::new)));
     }
 }
