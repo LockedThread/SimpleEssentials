@@ -102,8 +102,10 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
         return accountData;
     }
 
-    public void createAccount(UUID uuid, String name) {
-        accountData.put(uuid, new Account(name));
+    public Account createAccount(UUID uuid, String name) {
+        final Account account = new Account(name);
+        accountData.put(uuid, account);
+        return account;
     }
 
     public Account getAccount(UUID uuid) {
