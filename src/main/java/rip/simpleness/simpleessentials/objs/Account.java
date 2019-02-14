@@ -1,6 +1,7 @@
 package rip.simpleness.simpleessentials.objs;
 
 import me.lucko.helper.serialize.Point;
+import org.bukkit.Location;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 
 import java.util.HashMap;
@@ -12,6 +13,7 @@ public final class Account {
     private double money;
     private HashMap<String, Long> usedKits;
     private HashMap<String, Point> homes;
+    private transient Location lastKnownLocation;
 
     public Account(String lastKnownName) {
         this.lastKnownName = lastKnownName;
@@ -54,6 +56,14 @@ public final class Account {
 
     public HashMap<String, Long> getUsedKits() {
         return usedKits;
+    }
+
+    public Location getLastKnownLocation() {
+        return lastKnownLocation;
+    }
+
+    public void setLastKnownLocation(Location lastKnownLocation) {
+        this.lastKnownLocation = lastKnownLocation;
     }
 
     @Override
