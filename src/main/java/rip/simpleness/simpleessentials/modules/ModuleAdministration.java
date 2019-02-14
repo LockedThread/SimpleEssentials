@@ -5,35 +5,52 @@ import com.google.common.reflect.TypeToken;
 import me.lucko.helper.Commands;
 import me.lucko.helper.command.CommandInterruptException;
 import me.lucko.helper.command.argument.ArgumentParser;
+import me.lucko.helper.cooldown.Cooldown;
+import me.lucko.helper.cooldown.CooldownMap;
 import me.lucko.helper.serialize.GsonStorageHandler;
 import me.lucko.helper.serialize.Point;
 import me.lucko.helper.terminable.TerminableConsumer;
 import me.lucko.helper.terminable.module.TerminableModule;
 import me.lucko.helper.text.Text;
 import me.lucko.helper.utils.Players;
+import org.apache.commons.lang3.StringUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
+import rip.simpleness.simpleessentials.Enchantments;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 
 import javax.annotation.Nonnull;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class ModuleAdministration implements TerminableModule {
 
     private static final SimpleEssentials INSTANCE = SimpleEssentials.getInstance();
     private GsonStorageHandler<HashMap<String, Point>> spawnDataStorage;
     private HashMap<String, Point> spawnPoints;
+    private CooldownMap<UUID> fixHandMap = CooldownMap.create(Cooldown.of(5, TimeUnit.MINUTES));
+    private CooldownMap<UUID> fixAllMap = CooldownMap.create(Cooldown.of(30, TimeUnit.MINUTES));
 
     @Override
     public void setup(@Nonnull TerminableConsumer terminableConsumer) {
+        this.spawnDataStorage = new GsonStorageHandler<>("spawns", ".json", INSTANCE.getDataFolder(), new TypeToken<HashMap<String, Point>>() {
+        });
+        this.spawnPoints = spawnDataStorage.load().orElse(new HashMap<>());
+        terminableConsumer.bind(() -> spawnDataStorage.save(spawnPoints));
+
         Commands.create()
                 .assertPlayer()
                 .assertPermission("simpleness.gamemode.creative")
@@ -142,7 +159,7 @@ public class ModuleAdministration implements TerminableModule {
                     } else {
                         Bukkit.broadcastMessage(Text.colorize(INSTANCE.getBroadcastPrefix() + Joiner.on(" ").skipNulls().join(commandContext.args())));
                     }
-                }).registerAndBind(terminableConsumer, "broadcast");
+                }).registerAndBind(terminableConsumer, "broadcast", "bc");
 
         Commands.create()
                 .assertPermission("simpleness.vanish")
@@ -212,12 +229,6 @@ public class ModuleAdministration implements TerminableModule {
                     }
                 }).registerAndBind(terminableConsumer, "speed");
 
-        this.spawnDataStorage = new GsonStorageHandler<>("spawns", ".json", INSTANCE.getDataFolder(), new TypeToken<HashMap<String, Point>>() {
-        });
-        this.spawnPoints = spawnDataStorage.load().orElse(new HashMap<>());
-        terminableConsumer.bind(() -> spawnDataStorage.save(spawnPoints));
-
-
         Commands.create()
                 .assertPlayer()
                 .assertPermission("simpleness.setspawn")
@@ -236,10 +247,10 @@ public class ModuleAdministration implements TerminableModule {
         Commands.create()
                 .assertPlayer()
                 .assertPermission("simpleness.enderchest")
-                .handler(commandContext -> commandContext.sender().openInventory(commandContext.sender().getEnderChest())).registerAndBind(terminableConsumer, "enderchest", "ec");
+                .handler(commandContext -> commandContext.sender().openInventory(commandContext.sender().getEnderChest())).registerAndBind(terminableConsumer, "enderchest", "ec", "echest");
 
         Commands.parserRegistry().register(Enchantment.class, ArgumentParser.of(s -> {
-            final Enchantment enchantment = Enchantment.getByName("s");
+            final Enchantment enchantment = Enchantments.getByName(s);
             return enchantment == null ? Optional.empty() : Optional.of(enchantment);
         }, s -> new CommandInterruptException("&cUnable to parse " + s + " as an Enchantment")));
 
@@ -248,18 +259,123 @@ public class ModuleAdministration implements TerminableModule {
                 .assertPermission("simpleness.enchant")
                 .handler(commandContext -> {
                     if (commandContext.args().size() == 2) {
-                        if (commandContext.sender().getItemInHand() == null) {
+                        final ItemStack hand = commandContext.sender().getItemInHand();
+                        if (hand == null) {
                             commandContext.reply("&cYou can't enchant nothing!");
                         } else {
                             Enchantment enchantment = commandContext.arg(0).parseOrFail(Enchantment.class);
                             int level = commandContext.arg(1).parseOrFail(Integer.class);
-                            commandContext.sender().getItemInHand().addUnsafeEnchantment(enchantment, level);
+                            hand.addUnsafeEnchantment(enchantment, level);
+                            commandContext.sender().updateInventory();
                             commandContext.reply(INSTANCE.getServerPrefix() + "&aYou have enchanted your item with " + enchantment.getName() + " " + level);
                         }
                     } else {
-                        commandContext.reply("/enchant [enchantment] [level]");
+                        commandContext.reply("&e/enchant [enchantment] [level]");
+                        commandContext.reply("&eEnchants: " + Joiner.on(", ").skipNulls().join(Enchantments.keySet()));
                     }
                 }).registerAndBind(terminableConsumer, "enchant");
+
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.craft")
+                .handler(commandContext -> commandContext.sender().openInventory(Bukkit.createInventory(commandContext.sender(), InventoryType.CRAFTING))).registerAndBind(terminableConsumer, "craft");
+
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.ptime")
+                .handler(commandContext -> {
+                    if (commandContext.args().size() == 1) {
+                        String time = commandContext.arg(0).parseOrFail(String.class);
+                        if (time.equalsIgnoreCase("day")) {
+                            commandContext.sender().setPlayerTime(5000, true);
+                        } else if (time.equalsIgnoreCase("night")) {
+                            commandContext.sender().setPlayerTime(15000, true);
+                        } else {
+                            commandContext.reply("&eTimes: night, day");
+                            return;
+                        }
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have set your time to " + time);
+                    } else {
+                        commandContext.reply("Times: night, day");
+                        commandContext.reply("&e/ptime [time]");
+                    }
+                }).registerAndBind(terminableConsumer, "ptime");
+
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.fixhand")
+                .handler(commandContext -> {
+                    ItemStack hand = commandContext.sender().getItemInHand();
+                    if (hand == null || hand.getType().isBlock() || hand.getDurability() == 0) {
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&cUnable to fix this Item");
+                    } else if (commandContext.sender().hasPermission("simpleness.fixhand.bypass") || fixHandMap.testSilently(commandContext.sender().getUniqueId())) {
+                        hand.setDurability((short) 0);
+                        commandContext.sender().updateInventory();
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&aYou have fixed a " + StringUtils.capitalize(hand.getType().name().replace("_", "").toLowerCase()));
+                        fixHandMap.put(commandContext.sender().getUniqueId(), fixHandMap.getBase());
+                    } else {
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&cYou can't fixhand for another " + fixHandMap.remainingTime(commandContext.sender().getUniqueId(), TimeUnit.SECONDS) + " seconds");
+                    }
+                }).registerAndBind(terminableConsumer, "fixhand", "repair");
+
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.fixall")
+                .handler(commandContext -> {
+                    HashSet<ItemStack> repairableItemStacks = getRepairableItemStacks(commandContext.sender().getInventory());
+                    final String join = Joiner.on(", ")
+                            .skipNulls()
+                            .join(repairableItemStacks.stream()
+                                    .map(itemStack -> StringUtils.capitalize(itemStack.getType().name().replace("_", " ")))
+                                    .collect(Collectors.toList()));
+                    if (repairableItemStacks.isEmpty()) {
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&cThere's no repairable items in your inventory!");
+                    } else if (commandContext.sender().hasPermission("simpleness.fixall.bypass") || fixAllMap.testSilently(commandContext.sender().getUniqueId())) {
+                        repairableItemStacks.forEach(itemStack -> itemStack.setDurability((short) 0));
+                        commandContext.sender().updateInventory();
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&aYou have fixed " + join);
+                        fixAllMap.put(commandContext.sender().getUniqueId(), fixAllMap.getBase());
+                    } else {
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&cYou can't fixall for another " + fixAllMap.remainingTime(commandContext.sender().getUniqueId(), TimeUnit.MINUTES) + " minutes");
+                    }
+                }).registerAndBind(terminableConsumer, "fixall", "repairall");
+
+        /*HashSet<UUID> test = new HashSet<>();
+
+        Commands.create()
+                .handler(commandContext -> {
+                    int amount = commandContext.arg(0).parseOrFail(Integer.class);
+                    final long l = System.currentTimeMillis();
+                    for (int i = 0; i < amount; i++) {
+                        UUID uuid = UUID.randomUUID();
+                        INSTANCE.getJedis().set(uuid.toString(), GsonProvider.prettyPrinting().toJson(INSTANCE.createAccount(uuid, RandomStringUtils.random(10))));
+                        System.out.println("Created user test in the redis " + uuid);
+                        test.add(uuid);
+                    }
+                    System.out.println("Took " + (System.currentTimeMillis() - l) + " ms to complete this task");
+                }).registerAndBind(terminableConsumer, "papi");
+        Commands.create()
+                .handler(commandContext -> {
+                    for (UUID uuid : test) {
+                        INSTANCE.getAccountData().remove(uuid);
+                        System.out.println("Removed " + uuid.toString());
+                    }
+                }).registerAndBind(terminableConsumer, "shit");*/
+    }
+
+    private HashSet<ItemStack> getRepairableItemStacks(PlayerInventory playerInventory) {
+        HashSet<ItemStack> itemStacks = new HashSet<>();
+        for (ItemStack content : playerInventory.getArmorContents()) {
+            if (content != null && content.getDurability() > 0 && !content.getType().isBlock()) {
+                itemStacks.add(content);
+            }
+        }
+        for (ItemStack content : playerInventory.getContents()) {
+            if (content != null && content.getDurability() > 0 && !content.getType().isBlock()) {
+                itemStacks.add(content);
+            }
+        }
+        return itemStacks;
     }
 
     public HashMap<String, Point> getSpawnPoints() {
