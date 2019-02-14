@@ -287,9 +287,9 @@ public class ModuleAdministration implements TerminableModule {
                     if (commandContext.args().size() == 1) {
                         String time = commandContext.arg(0).parseOrFail(String.class);
                         if (time.equalsIgnoreCase("day")) {
-                            commandContext.sender().setPlayerTime(5000, true);
-                        } else if (time.equalsIgnoreCase("night")) {
                             commandContext.sender().setPlayerTime(15000, true);
+                        } else if (time.equalsIgnoreCase("night")) {
+                            commandContext.sender().setPlayerTime(5000, true);
                         } else {
                             commandContext.reply("&eTimes: night, day");
                             return;
