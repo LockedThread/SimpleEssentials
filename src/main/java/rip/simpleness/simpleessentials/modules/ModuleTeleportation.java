@@ -6,9 +6,11 @@ import me.lucko.helper.Commands;
 import me.lucko.helper.terminable.TerminableConsumer;
 import me.lucko.helper.terminable.module.TerminableModule;
 import me.lucko.helper.text.Text;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import rip.simpleness.simpleessentials.SimpleEssentials;
+import rip.simpleness.simpleessentials.objs.Account;
 
 import javax.annotation.Nonnull;
 import java.util.UUID;
@@ -64,5 +66,35 @@ public class ModuleTeleportation implements TerminableModule {
                         commandContext.reply("&eYou have been teleported to " + target.getName());
                     }
                 }).registerAndBind(terminableConsumer, "tpyes", "tpaccept");
+
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.tppos")
+                .handler(commandContext -> {
+                    if (commandContext.args().size() == 3) {
+                        int x = commandContext.arg(0).parseOrFail(Integer.class),
+                                y = commandContext.arg(1).parseOrFail(Integer.class),
+                                z = commandContext.arg(2).parseOrFail(Integer.class);
+                        commandContext.sender().teleport(new Location(commandContext.sender().getWorld(), x, y, z));
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have teleported to " + x + ", " + y + ", " + z);
+                    } else {
+                        commandContext.reply("&e/tppos [x] [y] [z]");
+                    }
+                }).registerAndBind(terminableConsumer, "tppos");
+
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.back")
+                .handler(commandContext -> {
+                    Account account = INSTANCE.getAccount(commandContext.sender());
+                    final Location lastKnownLocation = account.getLastKnownLocation();
+                    if (lastKnownLocation == null) {
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&cUnable to find a last known location");
+                    } else {
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&aYou have been teleported to your last known location");
+                        commandContext.sender().teleport(lastKnownLocation);
+                        account.setLastKnownLocation(null);
+                    }
+                }).registerAndBind(terminableConsumer, "back");
     }
 }
