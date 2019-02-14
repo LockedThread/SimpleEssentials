@@ -13,3 +13,8 @@ motd-message:
   - '&7&lStore&8&l: &3https://store.mineagepvp.com/'
   - '&7&lDiscord&8&l: &3https://discord.gg/rdC6hc3'
   - '&7Use &3/kit &7& &3/wild &7to get started'
+spawn:
+  world: 'world'
+  x: 0
+  y: 122
+  z: 0

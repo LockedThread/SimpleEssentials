@@ -1,14 +1,11 @@
 package rip.simpleness.simpleessentials.modules;
 
 import com.google.common.base.Joiner;
-import com.google.common.reflect.TypeToken;
 import me.lucko.helper.Commands;
 import me.lucko.helper.command.CommandInterruptException;
 import me.lucko.helper.command.argument.ArgumentParser;
 import me.lucko.helper.cooldown.Cooldown;
 import me.lucko.helper.cooldown.CooldownMap;
-import me.lucko.helper.serialize.GsonStorageHandler;
-import me.lucko.helper.serialize.Point;
 import me.lucko.helper.terminable.TerminableConsumer;
 import me.lucko.helper.terminable.module.TerminableModule;
 import me.lucko.helper.text.Text;
@@ -16,6 +13,7 @@ import me.lucko.helper.utils.Players;
 import org.apache.commons.lang3.StringUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
@@ -29,7 +27,6 @@ import rip.simpleness.simpleessentials.Enchantments;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 
 import javax.annotation.Nonnull;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,18 +36,13 @@ import java.util.stream.Collectors;
 public class ModuleAdministration implements TerminableModule {
 
     private static final SimpleEssentials INSTANCE = SimpleEssentials.getInstance();
-    private GsonStorageHandler<HashMap<String, Point>> spawnDataStorage;
-    private HashMap<String, Point> spawnPoints;
     private CooldownMap<UUID> fixHandMap = CooldownMap.create(Cooldown.of(5, TimeUnit.MINUTES));
     private CooldownMap<UUID> fixAllMap = CooldownMap.create(Cooldown.of(30, TimeUnit.MINUTES));
+    private Location spawnPoint;
 
     @Override
     public void setup(@Nonnull TerminableConsumer terminableConsumer) {
-        this.spawnDataStorage = new GsonStorageHandler<>("spawns", ".json", INSTANCE.getDataFolder(), new TypeToken<HashMap<String, Point>>() {
-        });
-        this.spawnPoints = spawnDataStorage.load().orElse(new HashMap<>());
-        terminableConsumer.bind(() -> spawnDataStorage.save(spawnPoints));
-
+        spawnPoint = new Location(Bukkit.getWorld(INSTANCE.getConfig().getString("spawn.world")), INSTANCE.getConfig().getInt("spawn.x"), INSTANCE.getConfig().getInt("spawn.y"), INSTANCE.getConfig().getInt("spawn.z"));
         Commands.create()
                 .assertPlayer()
                 .assertPermission("simpleness.gamemode.creative")
@@ -231,17 +223,7 @@ public class ModuleAdministration implements TerminableModule {
 
         Commands.create()
                 .assertPlayer()
-                .assertPermission("simpleness.setspawn")
-                .handler(commandContext -> {
-                    Point point = Point.of(commandContext.sender().getLocation());
-                    spawnPoints.put("default", point);
-                    commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have set the spawn at " + point.toString());
-                    commandContext.sender().getWorld().setSpawnLocation(commandContext.sender().getLocation().getBlockX(), commandContext.sender().getLocation().getBlockY(), commandContext.sender().getLocation().getBlockZ());
-                }).registerAndBind(terminableConsumer, "setspawn");
-
-        Commands.create()
-                .assertPlayer()
-                .handler(commandContext -> commandContext.sender().teleport(spawnPoints.get("default").toLocation(), PlayerTeleportEvent.TeleportCause.COMMAND))
+                .handler(commandContext -> commandContext.sender().teleport(spawnPoint, PlayerTeleportEvent.TeleportCause.COMMAND))
                 .registerAndBind(terminableConsumer, "spawn");
 
         Commands.create()
@@ -378,7 +360,7 @@ public class ModuleAdministration implements TerminableModule {
         return itemStacks;
     }
 
-    public HashMap<String, Point> getSpawnPoints() {
-        return spawnPoints;
+    public Location getSpawnPoint() {
+        return spawnPoint;
     }
 }
