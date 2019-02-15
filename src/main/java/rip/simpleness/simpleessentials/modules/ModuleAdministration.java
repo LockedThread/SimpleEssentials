@@ -322,6 +322,16 @@ public class ModuleAdministration implements TerminableModule {
                     }
                 }).registerAndBind(terminableConsumer, "fixall", "repairall");
 
+        Commands.create()
+                .assertConsole()
+                .handler(commandContext -> {
+                    if (commandContext.args().size() > 1) {
+                        commandContext.arg(0).parseOrFail(Player.class).sendMessage(Text.colorize(Joiner.on(" ").skipNulls().join(commandContext.args().subList(1, commandContext.args().size()))));
+                    } else {
+                        commandContext.reply("&c/consolemsg [player] [message...]");
+                    }
+                }).registerAndBind(terminableConsumer, "consolemsg");
+
         /*HashSet<UUID> test = new HashSet<>();
 
         Commands.create()
