@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @Plugin(name = "SimpleEssentials",
         version = "1.0",
         description = "Simpleness's Essentials alternative",
-        load = PluginLoadOrder.STARTUP,
+        load = PluginLoadOrder.POSTWORLD,
         authors = "Simpleness",
         website = "www.simpleness.rip",
         depends = {@PluginDependency("Vault"), @PluginDependency("helper")})
