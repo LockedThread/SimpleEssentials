@@ -15,6 +15,6 @@ motd-message:
   - '&7Use &3/kit &7& &3/wild &7to get started'
 spawn:
   world: 'world'
-  x: 0
+  x: 0.5
   y: 122
-  z: 0
+  z: 0.5

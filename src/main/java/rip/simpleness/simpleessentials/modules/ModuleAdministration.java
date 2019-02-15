@@ -42,7 +42,7 @@ public class ModuleAdministration implements TerminableModule {
 
     @Override
     public void setup(@Nonnull TerminableConsumer terminableConsumer) {
-        spawnPoint = new Location(Bukkit.getWorld(INSTANCE.getConfig().getString("spawn.world")), INSTANCE.getConfig().getInt("spawn.x"), INSTANCE.getConfig().getInt("spawn.y"), INSTANCE.getConfig().getInt("spawn.z"));
+        spawnPoint = new Location(Bukkit.getWorld(INSTANCE.getConfig().getString("spawn.world")), INSTANCE.getConfig().getDouble("spawn.x"), INSTANCE.getConfig().getDouble("spawn.y"), INSTANCE.getConfig().getDouble("spawn.z"));
         Commands.create()
                 .assertPlayer()
                 .assertPermission("simpleness.gamemode.creative")
