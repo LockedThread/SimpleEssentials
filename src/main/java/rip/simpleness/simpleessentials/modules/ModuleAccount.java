@@ -59,7 +59,6 @@ public class ModuleAccount implements TerminableModule {
                     Player player = event.getPlayer();
                     INSTANCE.getJedis().set(player.getUniqueId().toString(), GsonProvider.prettyPrinting().toJson(INSTANCE.getAccount(player)));
                     INSTANCE.getAccountData().remove(player.getUniqueId());
-                    System.out.println(event.getEventName() + " was called");
                 }).bindWith(terminableConsumer);
 
         Events.subscribe(PlayerDeathEvent.class).handler(event -> Schedulers.sync().runLater(() -> event.getEntity().spigot().respawn(), 3L)).bindWith(terminableConsumer);
