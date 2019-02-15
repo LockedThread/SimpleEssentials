@@ -2,6 +2,7 @@ package rip.simpleness.simpleessentials.modules;
 
 import me.lucko.helper.Commands;
 import me.lucko.helper.Events;
+import me.lucko.helper.Schedulers;
 import me.lucko.helper.command.CommandInterruptException;
 import me.lucko.helper.command.argument.ArgumentParser;
 import me.lucko.helper.gson.GsonProvider;
@@ -10,8 +11,10 @@ import me.lucko.helper.terminable.module.TerminableModule;
 import me.lucko.helper.utils.Players;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 import rip.simpleness.simpleessentials.objs.Account;
@@ -59,5 +62,9 @@ public class ModuleAccount implements TerminableModule {
                     INSTANCE.getAccountData().remove(player.getUniqueId());
                     System.out.println(event.getEventName() + " was called");
                 }).bindWith(terminableConsumer);
+
+        Events.subscribe(PlayerDeathEvent.class).handler(event -> Schedulers.sync().runLater(() -> event.getEntity().spigot().respawn(), 3L)).bindWith(terminableConsumer);
+
+        Events.subscribe(PlayerRespawnEvent.class).handler(event -> event.setRespawnLocation(INSTANCE.getModuleAdministration().getSpawnPoint())).bindWith(terminableConsumer);
     }
 }
