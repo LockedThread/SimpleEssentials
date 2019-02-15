@@ -77,6 +77,7 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
         this.moduleAdministration = new ModuleAdministration();
         bindModule(moduleAdministration);
         bindModule(new ModuleHome());
+        bindModule(new ModuleClearLag());
 
         /*
          * Economy/Vault
