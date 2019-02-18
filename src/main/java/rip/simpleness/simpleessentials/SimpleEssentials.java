@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @Plugin(name = "SimpleEssentials",
         version = "1.0",
         description = "Simpleness's Essentials alternative",
-        load = PluginLoadOrder.POSTWORLD,
+        load = PluginLoadOrder.STARTUP,
         authors = "Simpleness",
         website = "www.simpleness.rip",
         depends = {@PluginDependency("Vault"), @PluginDependency("helper")})
@@ -67,13 +67,13 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
         /*
          * Modules
          */
+        bindModule(new ModuleAccount());
         bindModule(new ModuleWarp());
         bindModule(new ModuleEconomy());
         bindModule(new ModuleTeleportation());
         bindModule(new ModuleAdministration());
         bindModule(new ModuleKit());
         bindModule(new ModuleFixes());
-        bindModule(new ModuleAccount());
         this.moduleAdministration = new ModuleAdministration();
         bindModule(moduleAdministration);
         bindModule(new ModuleHome());
@@ -92,7 +92,8 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
         getServer().getServicesManager().unregister(Economy.class, this.provider);
         getConfig().set("player-joins", playerJoins);
         saveConfig();
-        accountData.forEach((key, value) -> jedis.set(key.toString(), GsonProvider.prettyPrinting().toJson(value)));
+        jedis.disconnect();
+        jedis.close();
     }
 
     public static SimpleEssentials getInstance() {
