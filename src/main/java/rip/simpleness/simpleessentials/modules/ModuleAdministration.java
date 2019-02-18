@@ -2,10 +2,13 @@ package rip.simpleness.simpleessentials.modules;
 
 import com.google.common.base.Joiner;
 import me.lucko.helper.Commands;
+import me.lucko.helper.Events;
+import me.lucko.helper.Schedulers;
 import me.lucko.helper.command.CommandInterruptException;
 import me.lucko.helper.command.argument.ArgumentParser;
 import me.lucko.helper.cooldown.Cooldown;
 import me.lucko.helper.cooldown.CooldownMap;
+import me.lucko.helper.event.filter.EventFilters;
 import me.lucko.helper.terminable.TerminableConsumer;
 import me.lucko.helper.terminable.module.TerminableModule;
 import me.lucko.helper.text.Text;
@@ -25,6 +28,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.metadata.FixedMetadataValue;
 import rip.simpleness.simpleessentials.Enchantments;
 import rip.simpleness.simpleessentials.SimpleEssentials;
+import rip.simpleness.simpleessentials.objs.Account;
 
 import javax.annotation.Nonnull;
 import java.util.HashSet;
@@ -42,7 +46,10 @@ public class ModuleAdministration implements TerminableModule {
 
     @Override
     public void setup(@Nonnull TerminableConsumer terminableConsumer) {
-        spawnPoint = new Location(Bukkit.getWorld(INSTANCE.getConfig().getString("spawn.world")), INSTANCE.getConfig().getDouble("spawn.x"), INSTANCE.getConfig().getDouble("spawn.y"), INSTANCE.getConfig().getDouble("spawn.z"));
+        Schedulers.sync().runLater(() -> this.spawnPoint = new Location(Bukkit.getWorld(INSTANCE.getConfig().getString("spawn.world")),
+                INSTANCE.getConfig().getDouble("spawn.x"),
+                INSTANCE.getConfig().getDouble("spawn.y"),
+                INSTANCE.getConfig().getDouble("spawn.z")), 4);
         Commands.create()
                 .assertPlayer()
                 .assertPermission("simpleness.gamemode.creative")
@@ -105,17 +112,81 @@ public class ModuleAdministration implements TerminableModule {
                 .assertPlayer()
                 .assertPermission("simpleness.feed")
                 .handler(commandContext -> {
-                    commandContext.reply(INSTANCE.getServerPrefix() + "&eYour food level has been saturated");
-                    commandContext.sender().setFoodLevel(20);
+                    if (commandContext.args().size() == 0) {
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&eYour food level has been saturated");
+                        commandContext.sender().setFoodLevel(20);
+                    } else if (commandContext.args().size() == 1 && commandContext.sender().hasPermission("simpleness.feed.others")) {
+                        Player player = commandContext.arg(0).parseOrFail(Player.class);
+                        player.sendMessage(Text.colorize(INSTANCE.getServerPrefix() + "&eYour food level has been saturated"));
+                        player.setFoodLevel(20);
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have saturated " + player.getName() + "'s food level");
+                    } else {
+                        if (commandContext.sender().hasPermission("simpleness.feed.others")) {
+                            commandContext.reply("&e/feed [player]");
+                        }
+                        commandContext.reply("&e/feed");
+                    }
                 }).registerAndBind(terminableConsumer, "feed");
 
         Commands.create()
                 .assertPlayer()
                 .assertPermission("simpleness.heal")
                 .handler(commandContext -> {
-                    commandContext.reply(INSTANCE.getServerPrefix() + "&eYour health level has been saturated");
-                    commandContext.sender().setHealth(20.0);
+                    if (commandContext.args().size() == 0) {
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&eYour health level has been saturated");
+                        commandContext.sender().setHealth(20.0);
+                    } else if (commandContext.args().size() == 1 && commandContext.sender().hasPermission("simpleness.heal.others")) {
+                        Player player = commandContext.arg(0).parseOrFail(Player.class);
+                        player.sendMessage(Text.colorize(INSTANCE.getServerPrefix() + "&eYour heal level has been saturated"));
+                        player.setFoodLevel(20);
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have saturated " + player.getName() + "'s health level");
+                    } else {
+                        if (commandContext.sender().hasPermission("simpleness.heal.others")) {
+                            commandContext.reply("&e/heal [player]");
+                        }
+                        commandContext.reply("&e/heal");
+                    }
                 }).registerAndBind(terminableConsumer, "heal");
+
+        Commands.create()
+                .assertPermission("simpleness.give")
+                .handler(commandContext -> {
+                    if (commandContext.args().size() >= 2 && commandContext.args().size() <= 3) {
+                        Player player = commandContext.arg(0).parseOrFail(Player.class);
+                        String materialString = commandContext.arg(1).parseOrFail(String.class);
+                        int amount = commandContext.args().size() == 3 ? commandContext.arg(2).parseOrFail(Integer.class) : 64;
+
+                        short data = 0;
+                        if (materialString.contains(":")) {
+                            try {
+                                data = Short.parseShort(materialString.split(":")[1]);
+                            } catch (NumberFormatException ex) {
+                                commandContext.reply("&cUnable to parse " + materialString.split(":")[1] + " as material data");
+                                return;
+                            }
+                        }
+
+                        final Material rootMatchedMaterial = Material.matchMaterial(materialString.split(":")[0]);
+                        Material material = rootMatchedMaterial == null ? Material.matchMaterial(materialString.split(":")[0].replace("_", "")) : rootMatchedMaterial;
+                        if (material == null) {
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&cUnable to find material " + materialString);
+                        } else {
+                            ItemStack itemStack = new ItemStack(material, amount);
+                            if (data != 0) {
+                                itemStack.setDurability(data);
+                            }
+                            if (player.getInventory().firstEmpty() == -1) {
+                                player.getWorld().dropItemNaturally(player.getLocation(), itemStack);
+                                commandContext.reply(INSTANCE.getServerPrefix() + "&e" + player.getName() + "'s inventory was full so we dropped the item on them!");
+                            } else {
+                                player.getInventory().addItem(itemStack);
+                                commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have given " + player.getName() + " " + amount + " of " + materialString);
+                            }
+                        }
+                    } else {
+                        commandContext.reply("&e/give [player] [material] {amt} ");
+                    }
+                }).registerAndBind(terminableConsumer, "give");
 
         Commands.create()
                 .handler(commandContext -> {
@@ -223,7 +294,11 @@ public class ModuleAdministration implements TerminableModule {
 
         Commands.create()
                 .assertPlayer()
-                .handler(commandContext -> commandContext.sender().teleport(spawnPoint, PlayerTeleportEvent.TeleportCause.COMMAND))
+                .handler(commandContext -> {
+                    Account account = INSTANCE.getAccount(commandContext.sender());
+                    account.setLastKnownLocation(commandContext.sender().getLocation());
+                    commandContext.sender().teleport(spawnPoint, PlayerTeleportEvent.TeleportCause.COMMAND);
+                })
                 .registerAndBind(terminableConsumer, "spawn");
 
         Commands.create()
@@ -332,27 +407,26 @@ public class ModuleAdministration implements TerminableModule {
                     }
                 }).registerAndBind(terminableConsumer, "consolemsg");
 
-        /*HashSet<UUID> test = new HashSet<>();
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.invsee")
+                .handler(commandContext -> {
+                    if (commandContext.args().size() == 1) {
+                        PlayerInventory inventory = commandContext.arg(0).parseOrFail(Player.class).getInventory();
+                        commandContext.sender().openInventory(inventory);
+                    } else {
+                        commandContext.reply("&e/invsee [player]");
+                    }
+                }).registerAndBind(terminableConsumer, "invsee");
 
-        Commands.create()
-                .handler(commandContext -> {
-                    int amount = commandContext.arg(0).parseOrFail(Integer.class);
-                    final long l = System.currentTimeMillis();
-                    for (int i = 0; i < amount; i++) {
-                        UUID uuid = UUID.randomUUID();
-                        INSTANCE.getJedis().set(uuid.toString(), GsonProvider.prettyPrinting().toJson(INSTANCE.createAccount(uuid, RandomStringUtils.random(10))));
-                        System.out.println("Created user test in the redis " + uuid);
-                        test.add(uuid);
+        Events.subscribe(PlayerTeleportEvent.class)
+                .filter(EventFilters.ignoreCancelled())
+                .filter(event -> !event.getTo().getWorld().getName().equals(event.getFrom().getWorld().getName()))
+                .handler(event -> {
+                    if (event.getPlayer().getGameMode() == GameMode.CREATIVE && event.getPlayer().hasPermission("simpleness.gamemode.creative")) {
+                        event.getPlayer().setGameMode(GameMode.CREATIVE);
                     }
-                    System.out.println("Took " + (System.currentTimeMillis() - l) + " ms to complete this task");
-                }).registerAndBind(terminableConsumer, "papi");
-        Commands.create()
-                .handler(commandContext -> {
-                    for (UUID uuid : test) {
-                        INSTANCE.getAccountData().remove(uuid);
-                        System.out.println("Removed " + uuid.toString());
-                    }
-                }).registerAndBind(terminableConsumer, "shit");*/
+                }).bindWith(terminableConsumer);
     }
 
     private HashSet<ItemStack> getRepairableItemStacks(PlayerInventory playerInventory) {
