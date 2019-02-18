@@ -49,13 +49,16 @@ public class ModuleWarp implements TerminableModule {
                 .handler(commandContext -> {
                     if (commandContext.args().size() == 1) {
                         Warp warp = commandContext.arg(0).parseOrFail(Warp.class);
-                        commandContext.reply(!warp.hasPermission(commandContext.sender()) ?
-                                INSTANCE.getServerPrefix() + "&cYou don't have permission to warp to \"" + commandContext.rawArg(0) + "\"" :
-                                teleport(commandContext.sender(), warp) ?
-                                        INSTANCE.getServerPrefix() + "&eYou have been teleported to \"" + commandContext.rawArg(0) + "\"" :
-                                        INSTANCE.getServerPrefix() + "&cUnable to teleport to \"" + commandContext.rawArg(0) + "\"");
+                        if (!warp.hasPermission(commandContext.sender())) {
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&cYou don't have permission to warp to \"" + commandContext.rawArg(0) + "\"");
+                        } else if (teleport(commandContext.sender(), warp)) {
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have been teleported to \"" + commandContext.rawArg(0) + "\"");
+                        } else {
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&cUnable to teleport to \"" + commandContext.rawArg(0) + "\"");
+                        }
                     } else {
-                        commandContext.reply("&e/warp [name]");
+                        final String warps = getWarps(commandContext.sender());
+                        commandContext.reply(warpData.isEmpty() ? INSTANCE.getServerPrefix() + "&cThere's no warps set! /setwarp [name]" : warps.isEmpty() ? INSTANCE.getServerPrefix() + "&cYou don't have permission to any of the current warps!" : INSTANCE.getServerPrefix() + "&eWarps: " + warps);
                     }
                 }).registerAndBind(terminableConsumer, "warp");
 
@@ -118,6 +121,10 @@ public class ModuleWarp implements TerminableModule {
     }
 
     public boolean teleport(Player player, Warp warp) {
-        return warp != null && player.teleport(warp.getPoint().toLocation(), PlayerTeleportEvent.TeleportCause.COMMAND);
+        if (warp != null) {
+            INSTANCE.getAccount(player).setLastKnownLocation(player.getLocation());
+            return player.teleport(warp.getPoint().toLocation(), PlayerTeleportEvent.TeleportCause.COMMAND);
+        }
+        return false;
     }
 }
