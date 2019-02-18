@@ -65,6 +65,18 @@ public class ModuleClearLag implements TerminableModule {
                                     }
                                     commandContext.reply(SimpleEssentials.getInstance().getServerPrefix() + "&eYou have cleared &f" + itemCount + " &eitems");
                                     return;
+                                case "info":
+                                    commandContext.reply(" ");
+                                    commandContext.reply("&dTotal Memory: &f" + (Runtime.getRuntime().totalMemory() / 1000000) + "M");
+                                    commandContext.reply("&dFree Memory: &f" + (Runtime.getRuntime().freeMemory() / 1000000) + "M");
+                                    commandContext.reply("&dWorlds: ");
+                                    for (World world : SimpleEssentials.getInstance().getServer().getWorlds()) {
+                                        int loadedChunk = world.getLoadedChunks().length;
+                                        int mobs = (int) world.getEntities().stream().filter(entity -> !(entity instanceof Player) && !(entity instanceof ArmorStand)).count();
+                                        commandContext.reply("&f" + world.getName() + " &d- loaded chunks: " + loadedChunk + " mobs: " + mobs);
+                                    }
+                                    commandContext.reply(" ");
+                                    return;
                             }
                         }
                     }
