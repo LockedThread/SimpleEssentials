@@ -61,6 +61,8 @@ public class ModuleTeleportation implements TerminableModule {
                     if (uuid == null) {
                         commandContext.reply("&cYou don't have any pending teleport requests.");
                     } else {
+                        Account account = INSTANCE.getAccount(commandContext.sender());
+                        account.setLastKnownLocation(commandContext.sender().getLocation());
                         Player target = INSTANCE.getServer().getPlayer(uuid);
                         target.teleport(commandContext.sender(), PlayerTeleportEvent.TeleportCause.COMMAND);
                         commandContext.reply("&eYou have been teleported to " + target.getName());
@@ -75,6 +77,8 @@ public class ModuleTeleportation implements TerminableModule {
                         int x = commandContext.arg(0).parseOrFail(Integer.class),
                                 y = commandContext.arg(1).parseOrFail(Integer.class),
                                 z = commandContext.arg(2).parseOrFail(Integer.class);
+                        Account account = INSTANCE.getAccount(commandContext.sender());
+                        account.setLastKnownLocation(commandContext.sender().getLocation());
                         commandContext.sender().teleport(new Location(commandContext.sender().getWorld(), x, y, z));
                         commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have teleported to " + x + ", " + y + ", " + z);
                     } else {
