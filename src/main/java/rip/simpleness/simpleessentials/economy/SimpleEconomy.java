@@ -65,6 +65,9 @@ public class SimpleEconomy implements Economy {
 
     @Override
     public boolean hasAccount(OfflinePlayer offlinePlayer) {
+        if (offlinePlayer.getUniqueId() == null) {
+            return hasAccount(offlinePlayer.getName());
+        }
         return hasAccount(offlinePlayer.getUniqueId());
     }
 
