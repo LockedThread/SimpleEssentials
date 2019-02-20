@@ -419,6 +419,15 @@ public class ModuleAdministration implements TerminableModule {
                     }
                 }).registerAndBind(terminableConsumer, "invsee");
 
+        Commands.create()
+                .assertPlayer()
+                .assertPermission("simpleness.fly")
+                .handler(commandContext -> {
+                    final boolean flying = commandContext.sender().isFlying();
+                    commandContext.sender().setFlying(!flying);
+                    commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have " + (commandContext.sender().isFlying() ? "&aenabled" : "&cdisabled") + " &eflying");
+                }).registerAndBind(terminableConsumer, "fly");
+
         Events.subscribe(PlayerTeleportEvent.class)
                 .filter(EventFilters.ignoreCancelled())
                 .filter(event -> !event.getTo().getWorld().getName().equals(event.getFrom().getWorld().getName()))
