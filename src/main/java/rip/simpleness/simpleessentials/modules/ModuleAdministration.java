@@ -20,7 +20,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.InventoryType;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
@@ -335,7 +335,8 @@ public class ModuleAdministration implements TerminableModule {
         Commands.create()
                 .assertPlayer()
                 .assertPermission("simpleness.craft")
-                .handler(commandContext -> commandContext.sender().openInventory(Bukkit.createInventory(commandContext.sender(), InventoryType.CRAFTING))).registerAndBind(terminableConsumer, "craft");
+                .handler(commandContext -> commandContext.sender().openWorkbench(null, true))
+                .registerAndBind(terminableConsumer, "craft");
 
         Commands.create()
                 .assertPlayer()
@@ -424,17 +425,23 @@ public class ModuleAdministration implements TerminableModule {
                 .assertPermission("simpleness.fly")
                 .handler(commandContext -> {
                     final boolean flying = commandContext.sender().isFlying();
+                    commandContext.sender().setAllowFlight(!flying);
                     commandContext.sender().setFlying(!flying);
                     commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have " + (commandContext.sender().isFlying() ? "&aenabled" : "&cdisabled") + " &eflying");
                 }).registerAndBind(terminableConsumer, "fly");
 
         Events.subscribe(PlayerTeleportEvent.class)
                 .filter(EventFilters.ignoreCancelled())
-                .filter(event -> !event.getTo().getWorld().getName().equals(event.getFrom().getWorld().getName()))
+                .filter(event -> (event.getTo() != null && event.getFrom() != null) && !event.getTo().getWorld().getName().equals(event.getFrom().getWorld().getName()))
+                .filter(event -> event.getPlayer().getGameMode() == GameMode.CREATIVE && event.getPlayer().hasPermission("simpleness.gamemode.creative"))
+                .handler(event -> event.getPlayer().setGameMode(GameMode.CREATIVE))
+                .bindWith(terminableConsumer);
+
+        Events.subscribe(PlayerDeathEvent.class)
+                .filter(event -> event.getEntity().hasPermission("simpleness.keepexp"))
                 .handler(event -> {
-                    if (event.getPlayer().getGameMode() == GameMode.CREATIVE && event.getPlayer().hasPermission("simpleness.gamemode.creative")) {
-                        event.getPlayer().setGameMode(GameMode.CREATIVE);
-                    }
+                    event.setDroppedExp(0);
+                    event.setKeepLevel(true);
                 }).bindWith(terminableConsumer);
     }
 

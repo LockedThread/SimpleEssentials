@@ -5,10 +5,8 @@ import me.lucko.helper.Commands;
 import me.lucko.helper.serialize.Point;
 import me.lucko.helper.terminable.TerminableConsumer;
 import me.lucko.helper.terminable.module.TerminableModule;
-import org.apache.commons.lang3.StringUtils;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent;
-import org.bukkit.permissions.PermissionAttachmentInfo;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 import rip.simpleness.simpleessentials.objs.Account;
 
@@ -54,6 +52,8 @@ public class ModuleHome implements TerminableModule {
                             String homeName = commandContext.rawArg(0);
                             account.getHomes().put(homeName, Point.of(commandContext.sender().getLocation()));
                             commandContext.reply(INSTANCE.getServerPrefix() + "&eYou've set your \"" + homeName + "\" home");
+                        } else {
+                            commandContext.reply(INSTANCE.getServerPrefix() + "&cYou have ran out of available homes, please purchase a rank upgrade for more!");
                         }
                     } else {
                         commandContext.reply("&e/sethome [homename]");
@@ -85,11 +85,12 @@ public class ModuleHome implements TerminableModule {
         if (player.hasPermission("simpleness.homes.unlimited") || player.isOp()) {
             return true;
         }
-        for (PermissionAttachmentInfo permission : player.getEffectivePermissions()) {
-            if (permission.getPermission().startsWith("simpleness.homes") && permission.getPermission().split(".").length == 3) {
-                if (StringUtils.isNumeric(permission.getPermission().split(".")[2])) {
-                    return Integer.parseInt(permission.getPermission().split(".")[2]) > currentSize;
-                }
+
+        for (int i = 50; i >= 1; --i) {
+            System.out.println(i);
+            if (player.hasPermission("simpleness.homes." + i)) {
+                System.out.println("has permission and " + (i > currentSize));
+                return i > currentSize;
             }
         }
         return false;

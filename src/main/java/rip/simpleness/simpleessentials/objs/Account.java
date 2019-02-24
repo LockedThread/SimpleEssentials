@@ -4,10 +4,14 @@ import me.lucko.helper.serialize.Point;
 import org.bukkit.Location;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Objects;
 
 public final class Account {
+
+    public Account() {
+    }
 
     private String lastKnownName;
     private double money;
@@ -99,5 +103,23 @@ public final class Account {
                 ", usedKits=" + usedKits +
                 ", homes=" + homes +
                 '}';
+    }
+
+    public static Account deserialize(String s) {
+        try {
+            return SimpleEssentials.json.beanFrom(Account.class, s);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public String serialize() {
+        try {
+            return SimpleEssentials.json.asString(this);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

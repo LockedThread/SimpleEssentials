@@ -15,7 +15,7 @@ public final class Kit {
     private final List<String> commands;
     private final long cooldown;
     private final boolean oneTimeUse;
-    private final String permission;
+    private String permission;
     private transient ItemStack[] inventoryContents, armorContents;
 
     public Kit(@NotNull String name, @NotNull ItemStack[] inventoryContents, @NotNull ItemStack[] armorContents, long cooldown, boolean oneTimeUse, @NotNull String permission, @NotNull List<String> commands) {
@@ -32,6 +32,10 @@ public final class Kit {
 
     public boolean hasPermission(Player player) {
         return permission.isEmpty() || player.hasPermission(permission) || player.isOp();
+    }
+
+    public void setPermission(String permission) {
+        this.permission = permission;
     }
 
     public ItemStack[] getInventoryContents() {

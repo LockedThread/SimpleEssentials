@@ -136,6 +136,33 @@ public class ModuleKit implements TerminableModule {
                         }
                     }
                 }).registerAndBind(terminableConsumer, "createkit");
+
+        Commands.create()
+                .assertPermission("simpleness.setkitpermission")
+                .handler(commandContext -> {
+                    if (commandContext.args().size() == 2) {
+                        Kit kit = commandContext.arg(0).parseOrFail(Kit.class);
+                        String permission = commandContext.arg(1).parseOrFail(String.class);
+                        kit.setPermission(permission);
+                        commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have set kit " + kit.getName() + " permission's to " + permission);
+                    } else {
+                        commandContext.reply("/setkitpermission [kit] [permission]");
+                    }
+                }).registerAndBind(terminableConsumer, "setkitpermission");
+
+        Commands.create()
+                .assertPermission("simpleness.kitinfo")
+                .handler(commandContext -> {
+                    if (commandContext.args().size() == 1) {
+                        Kit kit = commandContext.arg(0).parseOrFail(Kit.class);
+                        commandContext.reply("");
+                        commandContext.reply("&eName: &f" + kit.getName());
+                        commandContext.reply("&eCommands Executed: &f" + (kit.getCommands().isEmpty() ? "&cNONE" : Joiner.on(", ").skipNulls().join(kit.getCommands())));
+                        commandContext.reply("&ePermission: &f" + kit.getPermission());
+                    } else {
+                        commandContext.reply("/kitinfo [kit]");
+                    }
+                }).registerAndBind(terminableConsumer, "kitinfo");
     }
 
 
@@ -147,7 +174,7 @@ public class ModuleKit implements TerminableModule {
         ArrayList<String> list = new ArrayList<>();
         kitData.forEach((key, kit) -> {
             if (kit.hasPermission(player)) {
-                if (account.getUsedKits().containsKey(kit.getName()) && ((System.currentTimeMillis() / 1000) - account.getUsedKits().get(kit.getName())) < kit.getCooldown()) {
+                if (account.getUsedKits().containsKey(kit.getName()) && ((System.currentTimeMillis() / 1000) - account.getUsedKits().get(kit.getName())) < kit.getCooldown() && !player.isOp()) {
                     list.add(ChatColor.STRIKETHROUGH + key + ChatColor.YELLOW);
                 } else {
                     list.add(ChatColor.YELLOW + key);

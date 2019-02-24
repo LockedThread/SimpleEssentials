@@ -1,6 +1,10 @@
 package rip.simpleness.simpleessentials;
 
-import me.lucko.helper.gson.GsonProvider;
+import com.fasterxml.jackson.jr.ob.JSON;
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisURI;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.sync.RedisCommands;
 import me.lucko.helper.plugin.ExtendedJavaPlugin;
 import me.lucko.helper.plugin.ap.Plugin;
 import me.lucko.helper.plugin.ap.PluginDependency;
@@ -10,13 +14,14 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginLoadOrder;
 import org.bukkit.plugin.ServicePriority;
-import redis.clients.jedis.Jedis;
 import rip.simpleness.simpleessentials.economy.SimpleEconomy;
 import rip.simpleness.simpleessentials.modules.*;
 import rip.simpleness.simpleessentials.objs.Account;
 
-import java.util.HashMap;
-import java.util.UUID;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Plugin(name = "SimpleEssentials",
@@ -28,20 +33,22 @@ import java.util.stream.Collectors;
         depends = {@PluginDependency("Vault"), @PluginDependency("helper")})
 public final class SimpleEssentials extends ExtendedJavaPlugin {
 
-    private HashMap<UUID, Account> accountData;
+    public static JSON json;
     private SimpleEconomy provider;
-
     private double defaultMoney;
     private String firstJoinMessage, motdMessage, serverPrefix, broadcastPrefix;
     private int playerJoins;
     private boolean disableWeather;
+    private ConcurrentHashMap<UUID, Account> accountData;
+    private RedisClient redisClient;
+    private StatefulRedisConnection<String, String> connection;
 
-    private Jedis jedis;
 
     private ModuleAdministration moduleAdministration;
 
     @Override
     protected void enable() {
+        this.accountData = new ConcurrentHashMap<>();
         /*
          * Config
          */
@@ -60,18 +67,24 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
         /*
          * Storage & Data
          */
-        jedis = new Jedis(getConfig().getString("redis.address"), getConfig().getInt("redis.port"));
-        jedis.auth(getConfig().getString("redis.password"));
-        this.accountData = new HashMap<>();
+
+        json = JSON.std.with(JSON.Feature.WRITE_NULL_PROPERTIES);
+
+        this.redisClient = RedisClient.create(RedisURI.builder().withHost(getConfig().getString("redis.address"))
+                .withPort(getConfig().getInt("redis.port"))
+                .withPassword(getConfig().getString("redis.password"))
+                .build());
+        this.redisClient.setDefaultTimeout(20, TimeUnit.SECONDS);
+        this.connection = redisClient.connect();
 
         /*
          * Modules
          */
+        bindModule(new ModuleAdministration());
+        bindModule(new ModuleEconomy());
         bindModule(new ModuleAccount());
         bindModule(new ModuleWarp());
-        bindModule(new ModuleEconomy());
         bindModule(new ModuleTeleportation());
-        bindModule(new ModuleAdministration());
         bindModule(new ModuleKit());
         bindModule(new ModuleFixes());
         this.moduleAdministration = new ModuleAdministration();
@@ -92,20 +105,37 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
         getServer().getServicesManager().unregister(Economy.class, this.provider);
         getConfig().set("player-joins", playerJoins);
         saveConfig();
-        jedis.disconnect();
-        jedis.close();
+        Iterator<Map.Entry<UUID, Account>> iterator = getAccountData().entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<UUID, Account> next = iterator.next();
+            try {
+                getRedis().set(next.getKey().toString(), json.asString(next.getValue()));
+                iterator.remove();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
+        getAccountData().clear();
+
+        try {
+            connection.close();
+            redisClient.shutdown();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public static SimpleEssentials getInstance() {
         return getPlugin(SimpleEssentials.class);
     }
 
-    public HashMap<UUID, Account> getAccountData() {
+    public ConcurrentHashMap<UUID, Account> getAccountData() {
         return accountData;
     }
 
     public Account createAccount(UUID uuid, String name) {
-        final Account account = new Account(name);
+        Account account = new Account(name);
         accountData.put(uuid, account);
         return account;
     }
@@ -114,14 +144,21 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
         return accountData.get(uuid);
     }
 
+    public Account getOnlineAccount(Player player) {
+        return accountData.get(player.getUniqueId());
+    }
+
     public Account getAccount(Player player) {
         return getAccount(player.getUniqueId());
     }
 
     public Account getOfflineAccount(UUID uuid) {
-        return getJedis().exists(uuid.toString()) ?
-                GsonProvider.prettyPrinting().fromJson(getJedis().get(uuid.toString()), Account.class) :
-                null;
+        try {
+            return SimpleEssentials.json.beanFrom(Account.class, getRedis().get(uuid.toString()));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
     public Account getAccount(String s) {
@@ -134,6 +171,21 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
         return getAccount(uuid);
     }
 
+    public Account getOrCreateAccount(UUID uuid) {
+        if (getAccount(uuid) != null) {
+            return getAccount(uuid);
+        }
+        Player player = Bukkit.getPlayer(uuid);
+        if (getAccount(player) != null) {
+            return getAccount(player);
+        }
+        final Account offlineAccount = getOfflineAccount(uuid);
+        if (offlineAccount != null) {
+            return offlineAccount;
+        }
+        return createAccount(uuid, player.getName());
+    }
+
     public boolean hasAccount(UUID uuid) {
         return getAccountData().containsKey(uuid);
     }
@@ -142,8 +194,8 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
         return provider;
     }
 
-    public Jedis getJedis() {
-        return jedis;
+    public RedisCommands<String, String> getRedis() {
+        return connection.sync();
     }
 
     /*
@@ -184,5 +236,14 @@ public final class SimpleEssentials extends ExtendedJavaPlugin {
 
     public ModuleAdministration getModuleAdministration() {
         return moduleAdministration;
+    }
+
+    public Set<Account> getAllAccounts() throws IOException {
+        Set<Account> set = new HashSet<>();
+        for (String key : getRedis().keys("*")) {
+            Account account = Bukkit.getOfflinePlayer(UUID.fromString(key)).isOnline() ? getAccount(UUID.fromString(key)) : SimpleEssentials.json.beanFrom(Account.class, getRedis().get(key));
+            set.add(account);
+        }
+        return set;
     }
 }

@@ -32,8 +32,7 @@ public class ModuleTeleportation implements TerminableModule {
                         Player target = commandContext.arg(0).parseOrFail(Player.class);
                         teleportationRequests.put(commandContext.sender().getUniqueId(), target.getUniqueId());
                         commandContext.reply(INSTANCE.getServerPrefix() + "&eYou have requested to teleport to " + target.getName());
-                        target.sendMessage(Text.colorize(INSTANCE.getServerPrefix() + "&eYou have been requested to be tp'd to by " + commandContext.sender().getName() + "\n" +
-                                INSTANCE.getServerPrefix() + "&eDo /tpaccept to accept the tpa."));
+                        target.sendMessage(Text.colorize(INSTANCE.getServerPrefix() + "&eYou have been requested to be tp'd to by " + commandContext.sender().getName() + "\n" + INSTANCE.getServerPrefix() + "&eDo /tpaccept to accept the tpa."));
                     } else {
                         commandContext.reply("&e/tpa [player]");
                     }

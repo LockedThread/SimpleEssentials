@@ -6,7 +6,7 @@ disable-weather: true
 default-money: 15000.0
 player-joins: 0
 server-prefix: '&8[&e&lMineage&6&lPVP&8] '
-first-join-message: '&8[&e&lMineage&6&lPVP&8] &eWelcome our {player} &f(#{join-times})'
+first-join-message: '&8[&e&lMineage&6&lPVP&8] &eWelcome {player}, join the discord https://discord.gg/E8hbyaG &f(#{join-times})'
 broadcast-prefix: '&8[&c&lBroadcast&8] &f'
 motd-message:
   - '&8&l【&fWelcome to &3Mineage&7PvP&8&l】'

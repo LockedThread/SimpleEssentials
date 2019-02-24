@@ -65,10 +65,7 @@ public class SimpleEconomy implements Economy {
 
     @Override
     public boolean hasAccount(OfflinePlayer offlinePlayer) {
-        if (offlinePlayer.getUniqueId() == null) {
-            return hasAccount(offlinePlayer.getName());
-        }
-        return hasAccount(offlinePlayer.getUniqueId());
+        return offlinePlayer.getUniqueId() == null ? hasAccount(offlinePlayer.getName()) : hasAccount(offlinePlayer.getUniqueId());
     }
 
     @Override
@@ -82,12 +79,12 @@ public class SimpleEconomy implements Economy {
     }
 
     public double getBalance(UUID uuid) {
-        return instance.getAccount(uuid).getMoney();
+        return instance.getOrCreateAccount(uuid).getMoney();
     }
 
     @Override
     public double getBalance(String s) {
-        return instance.getAccount(s).getMoney();
+        return instance.getOrCreateAccount(Bukkit.getPlayer(s).getUniqueId()).getMoney();
     }
 
     @Override
@@ -97,10 +94,7 @@ public class SimpleEconomy implements Economy {
         }
         System.out.println(offlinePlayer.getUniqueId() + " is not online");
         final Account offlineAccount = instance.getOfflineAccount(offlinePlayer.getUniqueId());
-        if (offlineAccount == null) {
-            return 0.0;
-        }
-        return offlineAccount.getMoney();
+        return offlineAccount == null ? 0.0 : offlineAccount.getMoney();
     }
 
     @Override
@@ -264,21 +258,25 @@ public class SimpleEconomy implements Economy {
 
     @Override
     public boolean createPlayerAccount(String s) {
-        return false;
+        instance.getOrCreateAccount(Bukkit.getPlayer(s).getUniqueId());
+        return true;
     }
 
     @Override
     public boolean createPlayerAccount(OfflinePlayer offlinePlayer) {
+        instance.getOrCreateAccount(offlinePlayer.getUniqueId());
         return false;
     }
 
     @Override
     public boolean createPlayerAccount(String s, String s1) {
+        instance.getOrCreateAccount(Bukkit.getPlayer(s).getUniqueId());
         return false;
     }
 
     @Override
     public boolean createPlayerAccount(OfflinePlayer offlinePlayer, String s) {
+        instance.getOrCreateAccount(Bukkit.getPlayer(s).getUniqueId());
         return false;
     }
 }

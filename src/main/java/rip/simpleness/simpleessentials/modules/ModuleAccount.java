@@ -6,19 +6,17 @@ import me.lucko.helper.Schedulers;
 import me.lucko.helper.command.CommandInterruptException;
 import me.lucko.helper.command.argument.ArgumentParser;
 import me.lucko.helper.event.filter.EventFilters;
-import me.lucko.helper.gson.GsonProvider;
 import me.lucko.helper.terminable.TerminableConsumer;
 import me.lucko.helper.terminable.module.TerminableModule;
-import me.lucko.helper.utils.Players;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.*;
-import org.bukkit.event.server.PluginDisableEvent;
 import rip.simpleness.simpleessentials.SimpleEssentials;
 import rip.simpleness.simpleessentials.objs.Account;
 
 import javax.annotation.Nonnull;
+import java.io.IOException;
 import java.util.Optional;
 
 public class ModuleAccount implements TerminableModule {
@@ -27,29 +25,43 @@ public class ModuleAccount implements TerminableModule {
 
     @Override
     public void setup(@Nonnull TerminableConsumer terminableConsumer) {
-        if (!Players.all().isEmpty()) {
+        /*if (!Players.all().isEmpty()) {
             for (Player player : Players.all()) {
-                Account account = GsonProvider.prettyPrinting().fromJson(INSTANCE.getJedis().get(player.getUniqueId().toString()), Account.class);
+                Account account = GsonProvider.prettyPrinting().fromJson(INSTANCE.getRedis().get(player.getUniqueId().toString()), Account.class);
                 INSTANCE.getAccountData().put(player.getUniqueId(), account);
             }
-        }
+        }*/
 
-        Commands.parserRegistry().register(Account.class, ArgumentParser.of(s -> Optional.of(INSTANCE.getAccount(s)), s -> new CommandInterruptException("&cUnable to find account \"" + s + "\"")));
+        Commands.parserRegistry().register(Account.class, ArgumentParser.of(s -> {
+            if (Bukkit.getOfflinePlayer(s).isOnline()) {
+                return Optional.of(INSTANCE.getAccount(s));
+            }
+            return Optional.of(INSTANCE.getOfflineAccount(Bukkit.getOfflinePlayer(s).getUniqueId()));
+        }, s -> new CommandInterruptException("&cUnable to find account \"" + s + "\"")));
 
         Events.subscribe(PlayerJoinEvent.class)
+                .handler(event -> event.setJoinMessage(null))
+                .bindWith(terminableConsumer);
+
+        Events.subscribe(PlayerLoginEvent.class)
+                .filter(EventFilters.ignoreDisallowedLogin())
                 .handler(event -> {
-                    event.setJoinMessage(null);
                     Player player = event.getPlayer();
-                    if (INSTANCE.getJedis().exists(player.getUniqueId().toString())) {
-                        Account account = GsonProvider.standard().fromJson(INSTANCE.getJedis().get(player.getUniqueId().toString()), Account.class);
-                        INSTANCE.getAccountData().put(player.getUniqueId(), account);
-                    } else {
+                    if (INSTANCE.getRedis().exists(player.getUniqueId().toString()) == 0) {
+                        System.out.println("created Account and put it in memory");
                         INSTANCE.createAccount(player.getUniqueId(), player.getName());
                         INSTANCE.setPlayerJoins(INSTANCE.getPlayerJoins() + 1);
                         Bukkit.broadcastMessage(INSTANCE.getFirstJoinMessage()
                                 .replace("{player}", player.getName())
                                 .replace("{join-times}", String.valueOf(INSTANCE.getPlayerJoins())));
-                        Bukkit.getScheduler().runTaskLater(INSTANCE, () -> player.teleport(INSTANCE.getModuleAdministration().getSpawnPoint(), PlayerTeleportEvent.TeleportCause.PLUGIN), 2L);
+                        Schedulers.sync().runLater(() -> player.teleport(INSTANCE.getModuleAdministration().getSpawnPoint(), PlayerTeleportEvent.TeleportCause.PLUGIN), 2L);
+                    } else {
+                        try {
+                            INSTANCE.getAccountData().put(player.getUniqueId(), SimpleEssentials.json.beanFrom(Account.class, INSTANCE.getRedis().get(player.getUniqueId().toString())));
+                            System.out.println(player.getUniqueId().toString() + " put in memory from db");
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }).bindWith(terminableConsumer);
 
@@ -57,7 +69,11 @@ public class ModuleAccount implements TerminableModule {
                 .handler(event -> {
                     event.setQuitMessage(null);
                     Player player = event.getPlayer();
-                    INSTANCE.getJedis().set(player.getUniqueId().toString(), GsonProvider.standard().toJson(INSTANCE.getAccount(player)));
+                    try {
+                        INSTANCE.getRedis().set(player.getUniqueId().toString(), SimpleEssentials.json.asString(INSTANCE.getOnlineAccount(player)));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                     INSTANCE.getAccountData().remove(player.getUniqueId());
                 }).bindWith(terminableConsumer);
 
@@ -65,7 +81,11 @@ public class ModuleAccount implements TerminableModule {
                 .filter(EventFilters.ignoreCancelled())
                 .handler(event -> {
                     Player player = event.getPlayer();
-                    INSTANCE.getJedis().set(player.getUniqueId().toString(), GsonProvider.standard().toJson(INSTANCE.getAccount(player)));
+                    try {
+                        INSTANCE.getRedis().set(player.getUniqueId().toString(), SimpleEssentials.json.asString(INSTANCE.getAccount(player)));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                     INSTANCE.getAccountData().remove(player.getUniqueId());
                 }).bindWith(terminableConsumer);
 
@@ -75,9 +95,5 @@ public class ModuleAccount implements TerminableModule {
         }).bindWith(terminableConsumer);
 
         Events.subscribe(PlayerRespawnEvent.class).handler(event -> event.setRespawnLocation(INSTANCE.getModuleAdministration().getSpawnPoint())).bindWith(terminableConsumer);
-
-        Events.subscribe(PluginDisableEvent.class)
-                .filter(event -> event.getPlugin().getName().equalsIgnoreCase(INSTANCE.getName()))
-                .handler(event -> INSTANCE.getAccountData().forEach((key, value) -> INSTANCE.getJedis().set(key.toString(), GsonProvider.standard().toJson(value)))).bindWith(terminableConsumer);
     }
 }
